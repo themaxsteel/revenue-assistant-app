@@ -5,6 +5,7 @@ import { agentLogSeed } from '@/mock/agentLog'
 import { globalGuardrails } from '@/mock/guardrails'
 import { usePortfolioStore } from './portfolio'
 import { useUiStore } from './ui'
+import { useMonitorStore, MONITORABLE_TYPES } from './monitor'
 import { idr } from '@/mock/util'
 
 let logCounter = 1000
@@ -62,6 +63,8 @@ export const useAgentStore = defineStore('agent', {
       if (!rec || rec.status !== 'pending') return
       rec.status = 'approved'
       this._logAction(rec, 'approved')
+      // Windowed actions go straight into the Monitoring loop.
+      if (MONITORABLE_TYPES.has(rec.type)) useMonitorStore().trackFromRecommendation(rec)
       useUiStore().toast(`Approved: ${rec.title}`)
     },
     reject(recId) {

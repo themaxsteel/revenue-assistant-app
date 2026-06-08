@@ -15,6 +15,7 @@ const routes = [
       { path: 'reports', name: 'reports', component: () => import('@/views/Reports.vue') },
       { path: 'social', name: 'social', component: () => import('@/views/Social.vue') },
       { path: 'analytics', name: 'analytics', component: () => import('@/views/Analytics.vue') },
+      { path: 'monitor', name: 'monitor', component: () => import('@/views/Monitor.vue') },
       { path: 'alerts', name: 'alerts', component: () => import('@/views/Alerts.vue') },
       { path: 'settings', name: 'settings', component: () => import('@/views/Settings.vue') },
       {
@@ -31,6 +32,7 @@ const routes = [
           { path: 'promotions', component: () => import('@/views/property/Promotions.vue') },
           { path: 'upselling', component: () => import('@/views/property/Upselling.vue') },
           { path: 'agent', component: () => import('@/views/property/AgentTab.vue') },
+          { path: 'monitor', component: () => import('@/views/property/Monitor.vue') },
           { path: 'tasks', redirect: (to) => `/property/${to.params.id}/overview` },
           { path: 'reports', component: () => import('@/views/property/ReportTab.vue') },
         ],

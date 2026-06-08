@@ -4,6 +4,7 @@ import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useTasksStore } from '@/stores/tasks'
+import { useMonitorStore } from '@/stores/monitor'
 import { propertyTypeLabel } from '@/mock/properties'
 import HealthRing from '@/components/ui/HealthRing.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -14,7 +15,10 @@ const route = useRoute()
 const router = useRouter()
 const portfolio = usePortfolioStore()
 const tasksStore = useTasksStore()
+const monitorStore = useMonitorStore()
 const property = computed(() => portfolio.byId(props.id))
+
+const monitorDecisionCount = computed(() => monitorStore.needsDecisionForProperty(props.id).length)
 
 const tasksOpenCount = computed(() =>
   tasksStore.forProperty(props.id).filter((t) => t.status === 'todo').length,
@@ -32,6 +36,7 @@ const tabs = [
   { key: 'promotions', label: 'Promotions' },
   { key: 'upselling', label: 'Upselling' },
   { key: 'agent', label: 'AI Agent' },
+  { key: 'monitor', label: 'Monitoring' },
   { key: 'reports', label: 'Reports' },
 ]
 const base = computed(() => `/property/${props.id}`)
@@ -118,6 +123,10 @@ function toggleReviewed() {
             class="rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none"
             :class="tasksOverdueCount > 0 ? 'bg-rose-100 text-rose-700' : 'bg-brand-100 text-brand-700'"
           >{{ tasksOpenCount }}</span>
+          <span
+            v-if="tab.key === 'monitor' && monitorDecisionCount > 0"
+            class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-amber-700"
+          >{{ monitorDecisionCount }}</span>
         </span>
         <span
           v-if="route.path === `${base}/${tab.key}`"

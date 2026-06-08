@@ -4,6 +4,7 @@ import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
+import { useMonitorStore } from '@/stores/monitor'
 import { useUiStore } from '@/stores/ui'
 import { useChatStore } from '@/stores/chat'
 import Badge from '@/components/ui/Badge.vue'
@@ -14,6 +15,7 @@ import ChatWidget from '@/components/ChatWidget.vue'
 const portfolio = usePortfolioStore()
 const agent = useAgentStore()
 const tasks = useTasksStore()
+const monitor = useMonitorStore()
 const ui = useUiStore()
 const chat = useChatStore()
 const route = useRoute()
@@ -37,6 +39,13 @@ watch(
 const nav = computed(() => [
   { to: '/portfolio', label: 'Portfolio', icon: 'portfolio', badge: portfolio.count },
   { to: '/agent', label: 'AI Agent', icon: 'agent', badge: agent.pending.length },
+  {
+    to: '/monitor',
+    label: 'Monitoring',
+    icon: 'monitor',
+    badge: monitor.needsDecision.length || null,
+    badgeTone: monitor.needsDecision.length ? 'amber' : null,
+  },
   // Surface overdue (red) over plain open count — overdue is what hurts.
   {
     to: '/tasks',
