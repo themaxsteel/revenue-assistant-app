@@ -1,11 +1,13 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Wallet, Tag, Percent, TrendingUp, TrendingDown } from 'lucide-vue-next'
+import { ChevronRight, Sparkles, ArrowUpRight, ArrowDownRight } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
+import { useAgentStore } from '@/stores/agent'
 import { useUiStore } from '@/stores/ui'
 import PropertyCard from '@/components/PropertyCard.vue'
 
 const portfolio = usePortfolioStore()
+const agent = useAgentStore()
 const ui = useUiStore()
 const sortKey = ref('attention')
 
@@ -16,12 +18,7 @@ const greeting = computed(() => {
 })
 const firstName = computed(() => portfolio.currentUser.name.split(' ')[0])
 
-// Revenue-impact KPIs — all derived from existing per-property fields.
-const totalUnits = computed(() => portfolio.properties.reduce((s, p) => s + p.units, 0))
-const avgRevpar = computed(() => Math.round(portfolio.totalRevpar / totalUnits.value))
-const avgAdr = computed(() =>
-  Math.round(portfolio.properties.reduce((s, p) => s + p.adr, 0) / portfolio.count),
-)
+// Portfolio momentum — derived from existing per-property fields.
 const avgOcc = computed(() => portfolio.avgOccupancy)
 const avgPace = computed(() =>
   Math.round(portfolio.properties.reduce((s, p) => s + p.paceDelta, 0) / portfolio.count),
@@ -31,6 +28,29 @@ const avgPace = computed(() =>
 function fmtIdr(v) {
   return v >= 1_000_000 ? `Rp ${(v / 1_000_000).toFixed(1)}jt` : `Rp ${Math.round(v / 1_000)}rb`
 }
+
+// ── Needs-attention spotlight: worst-health / off-pace / alerting properties ──
+function reasonFor(p) {
+  if (p.alertCount > 0) return `${p.alertCount} active alert${p.alertCount > 1 ? 's' : ''}`
+  if (p.occupancy < 55) return `Occupancy only ${p.occupancy}%`
+  if (p.pickup7d < 0) return `Pickup down ${Math.abs(p.pickup7d)} this week`
+  return `Health score ${p.healthScore}`
+}
+const attention = computed(() =>
+  [...portfolio.properties]
+    .filter((p) => p.healthScore < 60 || p.alertCount > 0 || p.paceDelta <= -8)
+    .sort((a, b) => a.healthScore - b.healthScore)
+    .slice(0, 4)
+    .map((p) => ({ ...p, reason: reasonFor(p) })),
+)
+
+// ── AI briefing inputs ──
+const pendingCount = computed(() => agent.pending.length)
+const pipeline = computed(() => agent.estPipeline)
+const autoCount = computed(() => portfolio.modeCounts.auto)
+const attentionNames = computed(() =>
+  attention.value.slice(0, 3).map((p) => p.name.split(' — ')[0]).join(', '),
+)
 
 const filtered = computed(() => {
   const q = ui.search.trim().toLowerCase()
@@ -57,58 +77,81 @@ const filtered = computed(() => {
       </p>
     </div>
 
-    <!-- Revenue-impact KPIs — the value the RA is protecting, at a glance -->
-    <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <!-- Portfolio RevPAR -->
-      <div class="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/70 to-white p-4 shadow-card">
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-          <Wallet class="h-6 w-6" />
+    <!-- AI Portfolio Briefing — the RA's morning read on the whole portfolio -->
+    <div class="mt-3 overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-white shadow-card">
+      <div class="flex items-start gap-3.5 p-4">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
+          <Sparkles class="h-5 w-5" />
         </div>
-        <div>
-          <p class="text-2xl font-bold leading-none tracking-tight text-emerald-600">{{ fmtIdr(avgRevpar) }}</p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Portfolio RevPAR</p>
-        </div>
-      </div>
-
-      <!-- Average ADR -->
-      <div class="flex items-center gap-4 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/70 to-white p-4 shadow-card">
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-          <Tag class="h-6 w-6" />
-        </div>
-        <div>
-          <p class="text-2xl font-bold leading-none tracking-tight text-brand-600">{{ fmtIdr(avgAdr) }}</p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Average ADR</p>
-        </div>
-      </div>
-
-      <!-- Occupancy -->
-      <div class="flex items-center gap-4 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/70 to-white p-4 shadow-card">
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-          <Percent class="h-6 w-6" />
-        </div>
-        <div>
-          <p class="text-2xl font-bold leading-none tracking-tight text-sky-600">{{ avgOcc }}%</p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Avg occupancy</p>
-        </div>
-      </div>
-
-      <!-- Pace vs last year -->
-      <div
-        class="flex items-center gap-4 rounded-2xl border p-4 shadow-card"
-        :class="avgPace >= 0 ? 'border-emerald-100 bg-gradient-to-br from-emerald-50/70 to-white' : 'border-rose-100 bg-gradient-to-br from-rose-50/70 to-white'"
-      >
-        <div
-          class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
-          :class="avgPace >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'"
-        >
-          <component :is="avgPace >= 0 ? TrendingUp : TrendingDown" class="h-6 w-6" />
-        </div>
-        <div>
-          <p class="text-2xl font-bold leading-none tracking-tight" :class="avgPace >= 0 ? 'text-emerald-600' : 'text-rose-600'">
-            {{ avgPace >= 0 ? '+' : '' }}{{ avgPace }}%
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <p class="text-sm font-semibold text-slate-900">AI Briefing</p>
+            <span class="inline-flex items-center gap-1 text-[11px] text-slate-400">
+              <span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400" /> Updated just now
+            </span>
+          </div>
+          <p class="mt-1.5 text-sm leading-relaxed text-slate-600">
+            Portfolio is pacing
+            <strong :class="avgPace >= 0 ? 'text-emerald-600' : 'text-rose-600'">{{ avgPace >= 0 ? '+' : '' }}{{ avgPace }}%</strong>
+            vs last year at <strong class="text-slate-800">{{ avgOcc }}%</strong> occupancy.
+            <template v-if="attention.length">
+              <strong class="text-slate-800">{{ attention.length }}</strong>
+              propert{{ attention.length > 1 ? 'ies' : 'y' }} need a look — <span class="text-slate-500">{{ attentionNames }}</span>.
+            </template>
+            <template v-else>Every property is in good shape right now.</template>
+            <template v-if="pendingCount">
+              I've prepared <strong class="text-brand-700">{{ pendingCount }}</strong> pricing recommendation{{ pendingCount > 1 ? 's' : '' }}
+              (~<strong class="text-brand-700">{{ fmtIdr(pipeline) }}</strong> upside), and
+              <strong class="text-slate-800">{{ autoCount }}</strong> propert{{ autoCount > 1 ? 'ies are' : 'y is' }} on autopilot.
+            </template>
           </p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Pace vs last year</p>
+          <RouterLink
+            v-if="pendingCount"
+            to="/agent"
+            class="pressable mt-2.5 inline-flex items-center gap-1 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white transition-colors duration-150 hover:bg-brand-700"
+          >
+            Review {{ pendingCount }} recommendation{{ pendingCount > 1 ? 's' : '' }}
+            <ChevronRight class="h-3.5 w-3.5" />
+          </RouterLink>
         </div>
+      </div>
+    </div>
+
+    <!-- Needs-attention spotlight — clickable worklist of the few that matter -->
+    <div v-if="attention.length" class="mt-3">
+      <div class="mb-2 flex items-center gap-2">
+        <p class="text-sm font-semibold text-slate-700">Needs attention</p>
+        <span class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700">{{ attention.length }}</span>
+      </div>
+      <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <RouterLink
+          v-for="p in attention"
+          :key="p.id"
+          :to="`/property/${p.id}/overview`"
+          class="pressable group flex items-center gap-3 rounded-xl border-l-2 border border-slate-200 bg-white p-3 shadow-card transition-colors duration-150 hover:border-brand-200 hover:bg-brand-50/40"
+          :class="p.healthScore < 45 ? 'border-l-rose-400' : 'border-l-amber-400'"
+        >
+          <span
+            class="flex h-9 shrink-0 items-center gap-0.5 rounded-lg px-2 text-sm font-bold tabular-nums"
+            :class="p.paceDelta >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'"
+            title="Pace vs last year"
+          >
+            <component :is="p.paceDelta >= 0 ? ArrowUpRight : ArrowDownRight" class="h-4 w-4" />
+            {{ p.paceDelta >= 0 ? '+' : '' }}{{ p.paceDelta }}%
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate text-sm font-semibold text-slate-800">{{ p.name }}</span>
+            <span class="block truncate text-xs text-slate-500">{{ p.reason }}</span>
+          </span>
+          <span
+            class="shrink-0 rounded-md px-1.5 py-0.5 text-[11px] font-bold tabular-nums"
+            :class="p.healthScore < 45 ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-amber-700'"
+            title="Health score"
+          >
+            {{ p.healthScore }}
+          </span>
+          <ChevronRight class="h-4 w-4 shrink-0 text-slate-300 transition-colors group-hover:text-brand-500" />
+        </RouterLink>
       </div>
     </div>
 

@@ -11,8 +11,8 @@ const chartData = computed(() => ({
     {
       label: 'Forecast',
       data: props.data.map((d) => d.occForecast),
-      borderColor: '#6366f1',
-      backgroundColor: 'rgba(99,102,241,0.12)',
+      borderColor: '#8c52ff',
+      backgroundColor: 'rgba(140,82,255,0.12)',
       fill: true,
       tension: 0.35,
       pointRadius: 0,

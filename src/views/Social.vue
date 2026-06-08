@@ -20,7 +20,7 @@ const ui = useUiStore()
 const PLATFORM_ICON = { instagram: Instagram, facebook: Facebook, tiktok: Music2 }
 const GRADIENTS = [
   'from-rose-200 to-orange-200',
-  'from-sky-200 to-indigo-200',
+  'from-sky-200 to-brand-300',
   'from-emerald-200 to-teal-200',
   'from-violet-200 to-fuchsia-200',
   'from-amber-200 to-rose-200',

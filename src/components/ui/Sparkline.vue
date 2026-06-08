@@ -8,7 +8,7 @@ const props = defineProps({
   tone: { type: String, default: 'brand' }, // brand | green | red
 })
 
-const colors = { brand: '#6366f1', green: '#10b981', red: '#f43f5e' }
+const colors = { brand: '#8c52ff', green: '#10b981', red: '#f43f5e' }
 
 const path = computed(() => {
   const d = props.data

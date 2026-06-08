@@ -6,7 +6,7 @@ import '@/components/charts/register'
 const props = defineProps({
   labels: { type: Array, required: true },
   values: { type: Array, required: true },
-  color: { type: String, default: '#6366f1' },
+  color: { type: String, default: '#8c52ff' },
   format: { type: String, default: '' }, // '%' | 'M'
 })
 

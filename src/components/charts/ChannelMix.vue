@@ -4,7 +4,7 @@ import { Doughnut } from 'vue-chartjs'
 import '@/components/charts/register'
 
 const props = defineProps({ channels: { type: Array, required: true } })
-const palette = ['#4f46e5', '#6366f1', '#818cf8', '#a5b4fc', '#c7d2fe', '#e0e7ff']
+const palette = ['#8c52ff', '#9a66ff', '#a87dff', '#c0a1ff', '#d8c6ff', '#ece2ff']
 
 const chartData = computed(() => ({
   labels: props.channels.map((c) => c.name),
