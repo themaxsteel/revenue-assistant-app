@@ -110,7 +110,7 @@ onMounted(() => agent.resurfaceSnoozed())
           :class="route.path.startsWith(item.to) ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'"
         >
           <span class="relative flex shrink-0 items-center justify-center">
-            <AppIcon :name="item.icon" :size="20" :stroke-width="route.path.startsWith(item.to) ? 2 : 1.75" />
+            <AppIcon :name="item.icon" :size="22" :stroke-width="route.path.startsWith(item.to) ? 2 : 1.75" />
             <!-- collapsed badge dot -->
             <span
               v-if="ui.sidebarCollapsed && item.badge"
@@ -137,33 +137,6 @@ onMounted(() => agent.resurfaceSnoozed())
           </span>
         </RouterLink>
       </nav>
-
-      <!-- Kill-switch -->
-      <div class="border-t border-slate-100 p-3">
-        <button
-          class="pressable group/nav relative flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150 ease-out"
-          :class="agent.guardrails.killSwitch ? 'bg-rose-50 text-rose-600' : 'text-slate-500 hover:bg-slate-50'"
-          @click="agent.toggleKillSwitch()"
-        >
-          <AppIcon name="power" :size="20" class="shrink-0" />
-          <span
-            class="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap transition-all duration-300 ease-drawer"
-            :class="ui.sidebarCollapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[180px] flex-1 opacity-100'"
-          >
-            <span class="flex-1 text-left">AI Agent</span>
-            <span
-              class="rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-wide"
-              :class="agent.guardrails.killSwitch ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'"
-            >{{ agent.guardrails.killSwitch ? 'PAUSED' : 'ACTIVE' }}</span>
-          </span>
-          <span
-            v-if="ui.sidebarCollapsed"
-            class="pointer-events-none absolute left-full z-50 ml-3 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-pop transition-all duration-150 ease-out group-hover/nav:opacity-100"
-          >
-            AI Agent · {{ agent.guardrails.killSwitch ? 'PAUSED' : 'ACTIVE' }}
-          </span>
-        </button>
-      </div>
 
       <!-- RA selector -->
       <div class="border-t border-slate-100 p-3">
