@@ -11,6 +11,7 @@ import Badge from '@/components/ui/Badge.vue'
 import AppIcon from '@/components/ui/AppIcon.vue'
 import ToastHost from '@/components/ui/ToastHost.vue'
 import ChatWidget from '@/components/ChatWidget.vue'
+import logoUrl from '@/assets/ratepilot-logo.png'
 
 const portfolio = usePortfolioStore()
 const agent = useAgentStore()
@@ -57,7 +58,7 @@ const nav = computed(() => [
   { to: '/reports', label: 'Owner Reports', icon: 'reports', badge: null },
   { to: '/social', label: 'Social Media', icon: 'social', badge: null },
   { to: '/analytics', label: 'Analytics', icon: 'analytics', badge: null },
-  { to: '/alerts', label: 'Alerts', icon: 'alerts', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
+  { to: '/alerts', label: 'Alerts', icon: 'bell', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
   { to: '/settings', label: 'Settings', icon: 'settings', badge: null },
 ])
 
@@ -97,15 +98,13 @@ onMounted(() => agent.resurfaceSnoozed())
 
       <!-- Brand -->
       <div class="flex items-center px-4 py-5">
-        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-          <AppIcon name="logo" :size="20" />
-        </div>
+        <img :src="logoUrl" alt="RatePilot" class="h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm" />
         <div
           class="min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 ease-drawer"
           :class="ui.sidebarCollapsed ? 'ml-0 max-w-0 opacity-0' : 'ml-2.5 max-w-[160px] flex-1 opacity-100'"
         >
-          <p class="truncate text-sm font-bold leading-tight text-slate-900">Revenue Assistant</p>
-          <p class="text-[11px] text-slate-400">GuestPro</p>
+          <p class="truncate text-sm font-bold leading-tight text-slate-900">RatePilot</p>
+          <p class="text-[11px] text-slate-400">Revenue Assistant</p>
         </div>
       </div>
 
@@ -169,7 +168,7 @@ onMounted(() => agent.resurfaceSnoozed())
     <!-- Main -->
     <div
       class="flex min-h-screen flex-1 flex-col transition-[padding] duration-300 ease-drawer"
-      :class="[ui.sidebarCollapsed ? 'pl-[68px]' : 'pl-60', chat.open ? 'lg:pr-[400px]' : '']"
+      :class="[ui.sidebarCollapsed ? 'pl-[68px]' : 'pl-60', chat.open ? 'lg:pr-[440px]' : '']"
     >
       <header class="sticky top-0 z-20 flex items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-6 py-3 backdrop-blur">
         <div class="relative flex-1 max-w-md">
@@ -211,7 +210,7 @@ onMounted(() => agent.resurfaceSnoozed())
             :title="chat.open ? 'Close AI assistant' : 'Ask the AI assistant'"
             @click="chat.toggle()"
           >
-            <AppIcon name="sparkles" :size="17" />
+            <AppIcon name="agent" :size="17" />
             <span class="hidden sm:inline">Ask AI</span>
             <span v-if="!chat.open && chat.unread" class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
               {{ chat.unread }}

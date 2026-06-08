@@ -1,5 +1,6 @@
 <script setup>
-import { reactive, ref, computed } from 'vue'
+import { reactive, ref, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import {
   Instagram, Facebook, Music2, Heart, MessageCircle, Play, CalendarClock,
@@ -26,8 +27,16 @@ const GRADIENTS = [
 ]
 
 // Deep clone so approvals mutate locally without touching the shared mock.
+const route = useRoute()
 const data = reactive(JSON.parse(JSON.stringify(socialFor(props.property.id))))
-const selected = ref('instagram')
+// Allow deep-linking to a platform, e.g. /property/:id/social?platform=facebook
+const selected = ref(PLATFORMS[route.query.platform] ? route.query.platform : 'instagram')
+watch(
+  () => route.query.platform,
+  (p) => {
+    if (PLATFORMS[p]) selected.value = p
+  },
+)
 const account = computed(() => data[selected.value])
 const published = computed(() => account.value.posts.filter((p) => p.status === 'published'))
 const upcoming = computed(() => account.value.posts.filter((p) => p.status !== 'published'))

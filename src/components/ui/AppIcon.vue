@@ -82,11 +82,9 @@ const ICONS = {
   expand: `<path d="M10.5 7l5 5-5 5"/>`,
   'chevron-down': `<path d="M7 10l5 5 5-5"/>`,
 
-  // ── Brand mark (ascending revenue bars) ─────────────────────
+  // ── Brand mark (paper-plane / navigation arrow) ─────────────
   logo: `
-    <rect x="4" y="12.5" width="3.6" height="6.5" rx="1.6" fill="currentColor" stroke="none"/>
-    <rect x="10.2" y="8.5" width="3.6" height="10.5" rx="1.6" fill="currentColor" stroke="none"/>
-    <rect x="16.4" y="4.5" width="3.6" height="14.5" rx="1.6" fill="currentColor" stroke="none"/>`,
+    <path d="M3.4 11.1 20.4 3.4a.85.85 0 0 1 1.13 1.16l-7.55 16.9a.85.85 0 0 1-1.6-.2L11.2 13 3.6 12.7a.85.85 0 0 1-.2-1.6z" fill="currentColor" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/>`,
 }
 
 const inner = computed(() => ICONS[props.name] || '')

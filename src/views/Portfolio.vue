@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { LayoutGrid, List, BarChart3, AlertCircle, Settings } from 'lucide-vue-next'
+import { Wallet, Tag, Percent, TrendingUp, TrendingDown } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useUiStore } from '@/stores/ui'
 import PropertyCard from '@/components/PropertyCard.vue'
@@ -8,6 +8,29 @@ import PropertyCard from '@/components/PropertyCard.vue'
 const portfolio = usePortfolioStore()
 const ui = useUiStore()
 const sortKey = ref('attention')
+
+// Personalised, time-aware welcome for the RA.
+const greeting = computed(() => {
+  const h = new Date().getHours()
+  return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+})
+const firstName = computed(() => portfolio.currentUser.name.split(' ')[0])
+
+// Revenue-impact KPIs — all derived from existing per-property fields.
+const totalUnits = computed(() => portfolio.properties.reduce((s, p) => s + p.units, 0))
+const avgRevpar = computed(() => Math.round(portfolio.totalRevpar / totalUnits.value))
+const avgAdr = computed(() =>
+  Math.round(portfolio.properties.reduce((s, p) => s + p.adr, 0) / portfolio.count),
+)
+const avgOcc = computed(() => portfolio.avgOccupancy)
+const avgPace = computed(() =>
+  Math.round(portfolio.properties.reduce((s, p) => s + p.paceDelta, 0) / portfolio.count),
+)
+
+// Compact IDR: Rp 1.4jt / Rp 820rb
+function fmtIdr(v) {
+  return v >= 1_000_000 ? `Rp ${(v / 1_000_000).toFixed(1)}jt` : `Rp ${Math.round(v / 1_000)}rb`
+}
 
 const filtered = computed(() => {
   const q = ui.search.trim().toLowerCase()
@@ -23,83 +46,68 @@ const filtered = computed(() => {
   }
   return list
 })
-
-const cap = computed(() => portfolio.currentUser.capacity)
-const used = computed(() => portfolio.count)
-const modes = computed(() => portfolio.modeCounts)
-const pct = computed(() => Math.round((used.value / cap.value) * 100))
-
-// circular ring geometry for the capacity stat
-const RING_R = 18
-const RING_C = 2 * Math.PI * RING_R
-const ringDash = computed(() => `${(pct.value / 100) * RING_C} ${RING_C}`)
 </script>
 
 <template>
   <div>
     <div>
-      <h1 class="text-xl font-bold text-slate-900">Portfolio</h1>
-      <p class="text-sm text-slate-500">{{ portfolio.count }} properties managed by {{ portfolio.currentUser.name }}</p>
+      <h1 class="text-xl font-bold text-slate-900">{{ greeting }}, {{ firstName }} 👋</h1>
+      <p class="text-sm text-slate-500">
+        Welcome back to your Revenue Assistant — here's how your {{ portfolio.count }} properties are pacing today.
+      </p>
     </div>
 
-    <!-- RA capacity stats — proves the "1 RA up to 20" premise, at a glance -->
+    <!-- Revenue-impact KPIs — the value the RA is protecting, at a glance -->
     <div class="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <!-- Slots used — circular ring -->
+      <!-- Portfolio RevPAR -->
       <div class="flex items-center gap-4 rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/70 to-white p-4 shadow-card">
-        <div class="relative h-14 w-14 shrink-0">
-          <svg class="h-14 w-14 -rotate-90" viewBox="0 0 44 44">
-            <circle cx="22" cy="22" :r="RING_R" fill="none" stroke="currentColor" stroke-width="4" class="text-emerald-100" />
-            <circle
-              cx="22" cy="22" :r="RING_R" fill="none" stroke="currentColor" stroke-width="4"
-              stroke-linecap="round" :stroke-dasharray="ringDash" class="text-emerald-500 ring-progress"
-            />
-          </svg>
-          <span class="absolute inset-0 flex items-center justify-center text-[11px] font-bold text-emerald-700">{{ pct }}%</span>
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+          <Wallet class="h-6 w-6" />
         </div>
         <div>
-          <p class="text-2xl font-bold leading-none tracking-tight text-emerald-600">
-            {{ used }}<span class="text-base font-semibold text-slate-400">/{{ cap }}</span>
-          </p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Properties managed</p>
+          <p class="text-2xl font-bold leading-none tracking-tight text-emerald-600">{{ fmtIdr(avgRevpar) }}</p>
+          <p class="mt-1.5 text-xs font-medium text-slate-500">Portfolio RevPAR</p>
         </div>
       </div>
 
-      <!-- Reviewed today -->
+      <!-- Average ADR -->
+      <div class="flex items-center gap-4 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/70 to-white p-4 shadow-card">
+        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
+          <Tag class="h-6 w-6" />
+        </div>
+        <div>
+          <p class="text-2xl font-bold leading-none tracking-tight text-brand-600">{{ fmtIdr(avgAdr) }}</p>
+          <p class="mt-1.5 text-xs font-medium text-slate-500">Average ADR</p>
+        </div>
+      </div>
+
+      <!-- Occupancy -->
       <div class="flex items-center gap-4 rounded-2xl border border-sky-100 bg-gradient-to-br from-sky-50/70 to-white p-4 shadow-card">
         <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-sky-100 text-sky-600">
-          <BarChart3 class="h-6 w-6" />
+          <Percent class="h-6 w-6" />
         </div>
         <div>
-          <p class="text-2xl font-bold leading-none tracking-tight text-sky-600">{{ portfolio.reviewedCount }}</p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Priced today</p>
+          <p class="text-2xl font-bold leading-none tracking-tight text-sky-600">{{ avgOcc }}%</p>
+          <p class="mt-1.5 text-xs font-medium text-slate-500">Avg occupancy</p>
         </div>
       </div>
 
-      <!-- Need review -->
+      <!-- Pace vs last year -->
       <div
         class="flex items-center gap-4 rounded-2xl border p-4 shadow-card"
-        :class="portfolio.staleCount ? 'border-amber-100 bg-gradient-to-br from-amber-50/70 to-white' : 'border-slate-100 bg-gradient-to-br from-slate-50/70 to-white'"
+        :class="avgPace >= 0 ? 'border-emerald-100 bg-gradient-to-br from-emerald-50/70 to-white' : 'border-rose-100 bg-gradient-to-br from-rose-50/70 to-white'"
       >
         <div
           class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full"
-          :class="portfolio.staleCount ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-500'"
+          :class="avgPace >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'"
         >
-          <AlertCircle class="h-6 w-6" />
+          <component :is="avgPace >= 0 ? TrendingUp : TrendingDown" class="h-6 w-6" />
         </div>
         <div>
-          <p class="text-2xl font-bold leading-none tracking-tight" :class="portfolio.staleCount ? 'text-amber-600' : 'text-slate-700'">{{ portfolio.staleCount }}</p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Action needed</p>
-        </div>
-      </div>
-
-      <!-- On Auto -->
-      <div class="flex items-center gap-4 rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/70 to-white p-4 shadow-card">
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-100 text-brand-600">
-          <Settings class="h-6 w-6" />
-        </div>
-        <div>
-          <p class="text-2xl font-bold leading-none tracking-tight text-brand-600">{{ modes.auto }}</p>
-          <p class="mt-1.5 text-xs font-medium text-slate-500">Auto-managed</p>
+          <p class="text-2xl font-bold leading-none tracking-tight" :class="avgPace >= 0 ? 'text-emerald-600' : 'text-rose-600'">
+            {{ avgPace >= 0 ? '+' : '' }}{{ avgPace }}%
+          </p>
+          <p class="mt-1.5 text-xs font-medium text-slate-500">Pace vs last year</p>
         </div>
       </div>
     </div>

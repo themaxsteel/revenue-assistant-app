@@ -145,3 +145,88 @@ properties.forEach((prop, i) => {
 export function socialFor(propertyId) {
   return ACCOUNTS[propertyId] || null
 }
+
+// ── Portfolio-level rollups (single source of truth for the global page) ──
+const PLATFORM_KEYS = Object.keys(PLATFORMS)
+const PROP_NAME = Object.fromEntries(properties.map((p) => [p.id, p.name]))
+
+function allAccounts() {
+  const out = []
+  for (const pid of Object.keys(ACCOUNTS))
+    for (const k of PLATFORM_KEYS) out.push({ propertyId: pid, ...ACCOUNTS[pid][k] })
+  return out
+}
+const avg = (arr, f) => +(arr.reduce((s, a) => s + f(a), 0) / arr.length).toFixed(1)
+
+// Per-platform performance across the whole portfolio.
+export const platformSummary = PLATFORM_KEYS.map((key) => {
+  const accts = properties.map((p) => ACCOUNTS[p.id][key])
+  return {
+    key,
+    name: PLATFORMS[key].name,
+    color: PLATFORMS[key].color,
+    reach: accts.reduce((s, a) => s + a.reachMonth, 0),
+    followers: accts.reduce((s, a) => s + a.followers, 0),
+    autoPosts: accts.reduce((s, a) => s + a.posts.length, 0),
+    engagementRate: avg(accts, (a) => a.engagementRate),
+    followerGrowthPct: avg(accts, (a) => a.followerGrowthPct),
+  }
+})
+
+// Headline numbers for the global summary cards.
+export const socialSummary = (() => {
+  const accts = allAccounts()
+  const reach = accts.reduce((s, a) => s + a.reachMonth, 0)
+  return {
+    autoPosts: accts.reduce((s, a) => s + a.posts.length, 0),
+    reach,
+    avgEngagement: avg(accts, (a) => a.engagementRate),
+    approvalsPending: accts.reduce(
+      (s, a) => s + a.posts.filter((p) => p.status === 'needs_approval').length,
+      0,
+    ),
+    bookingsAttributed: Math.round(reach / 9000),
+  }
+})()
+
+// One row per property for the breakdown table (aggregated across platforms).
+export const propertySocialRows = properties.map((p) => {
+  const accts = PLATFORM_KEYS.map((k) => ACCOUNTS[p.id][k])
+  const topPlatform = PLATFORM_KEYS[
+    accts.reduce((bi, a, i, arr) => (a.reachMonth > arr[bi].reachMonth ? i : bi), 0)
+  ]
+  return {
+    id: p.id,
+    name: p.name,
+    reach: accts.reduce((s, a) => s + a.reachMonth, 0),
+    posts: accts.reduce((s, a) => s + a.posts.length, 0),
+    engagementRate: avg(accts, (a) => a.engagementRate),
+    followerGrowthPct: avg(accts, (a) => a.followerGrowthPct),
+    automationOn: accts.some((a) => a.automationOn),
+    topPlatform,
+  }
+})
+
+// Best published posts across the portfolio (with thumbnails for drill-down).
+export function topPosts(limit = 6) {
+  return allAccounts()
+    .flatMap((a) =>
+      a.posts
+        .filter((p) => p.status === 'published')
+        .map((p) => ({ ...p, propertyName: PROP_NAME[a.propertyId] })),
+    )
+    .sort((x, y) => y.engagement - x.engagement)
+    .slice(0, limit)
+}
+
+// Upcoming scheduled / needs-approval posts across the portfolio.
+export function socialQueue(limit = 8) {
+  return allAccounts()
+    .flatMap((a) =>
+      a.posts
+        .filter((p) => p.status !== 'published')
+        .map((p) => ({ ...p, propertyName: PROP_NAME[a.propertyId] })),
+    )
+    .sort((x, y) => (x.postedAt < y.postedAt ? -1 : 1))
+    .slice(0, limit)
+}

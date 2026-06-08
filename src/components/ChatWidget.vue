@@ -39,12 +39,12 @@ watch(() => [chat.messages.length, chat.typing, chat.open], scrollToBottom)
   <Transition name="drawer">
     <aside
       v-if="chat.open"
-      class="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-slate-200 bg-white sm:w-[400px]"
+      class="fixed inset-y-0 right-0 z-40 flex w-full flex-col border-l border-slate-200 bg-white sm:w-[440px]"
     >
       <!-- Header — clean white, subtle indigo accent -->
       <div class="flex items-center gap-3 border-b border-slate-100 px-4 py-3.5">
         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
-          <AppIcon name="sparkles" :size="19" />
+          <AppIcon name="agent" :size="19" />
         </div>
         <div class="min-w-0 flex-1">
           <p class="text-sm font-semibold leading-tight text-slate-900">Assistant</p>
@@ -64,9 +64,6 @@ watch(() => [chat.messages.length, chat.typing, chat.open], scrollToBottom)
         <template v-for="m in chat.messages" :key="m.id">
           <!-- Assistant -->
           <div v-if="m.role === 'assistant'" class="flex items-start gap-2.5">
-            <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-              <AppIcon name="sparkles" :size="15" />
-            </div>
             <div class="min-w-0 max-w-[86%]">
               <div class="whitespace-pre-line rounded-2xl rounded-tl-md bg-slate-100 px-3.5 py-2.5 text-sm leading-relaxed text-slate-700">
                 {{ m.text }}
@@ -94,9 +91,6 @@ watch(() => [chat.messages.length, chat.typing, chat.open], scrollToBottom)
 
         <!-- Typing -->
         <div v-if="chat.typing" class="flex items-start gap-2.5">
-          <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-            <AppIcon name="sparkles" :size="15" />
-          </div>
           <div class="flex items-center gap-1 rounded-2xl rounded-tl-md bg-slate-100 px-3.5 py-3">
             <span class="dot" /><span class="dot" style="animation-delay: 150ms" /><span class="dot" style="animation-delay: 300ms" />
           </div>
