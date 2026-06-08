@@ -7,7 +7,7 @@ const routes = [
     path: '/',
     component: AppShell,
     children: [
-      { path: '', redirect: '/today' },
+      { path: '', redirect: '/portfolio' },
       { path: 'today', name: 'today', component: () => import('@/views/Today.vue') },
       { path: 'portfolio', name: 'portfolio', component: () => import('@/views/Portfolio.vue') },
       { path: 'agent', name: 'agent', component: () => import('@/views/AgentCenter.vue') },
@@ -31,7 +31,7 @@ const routes = [
           { path: 'promotions', component: () => import('@/views/property/Promotions.vue') },
           { path: 'upselling', component: () => import('@/views/property/Upselling.vue') },
           { path: 'agent', component: () => import('@/views/property/AgentTab.vue') },
-          { path: 'tasks', component: () => import('@/views/property/TasksTab.vue') },
+          { path: 'tasks', redirect: (to) => `/property/${to.params.id}/overview` },
           { path: 'reports', component: () => import('@/views/property/ReportTab.vue') },
         ],
       },

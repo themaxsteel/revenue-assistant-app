@@ -35,7 +35,6 @@ watch(
 )
 
 const nav = computed(() => [
-  { to: '/today', label: 'Today', icon: 'today', badge: null },
   { to: '/portfolio', label: 'Portfolio', icon: 'portfolio', badge: portfolio.count },
   { to: '/agent', label: 'AI Agent', icon: 'agent', badge: agent.pending.length },
   // Surface overdue (red) over plain open count — overdue is what hurts.

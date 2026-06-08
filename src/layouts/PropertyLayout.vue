@@ -32,7 +32,6 @@ const tabs = [
   { key: 'promotions', label: 'Promotions' },
   { key: 'upselling', label: 'Upselling' },
   { key: 'agent', label: 'AI Agent' },
-  { key: 'tasks', label: 'Tasks' },
   { key: 'reports', label: 'Reports' },
 ]
 const base = computed(() => `/property/${props.id}`)
@@ -115,7 +114,7 @@ function toggleReviewed() {
         <span class="flex items-center gap-1.5">
           {{ tab.label }}
           <span
-            v-if="tab.key === 'tasks' && tasksOpenCount > 0"
+            v-if="tab.key === 'overview' && tasksOpenCount > 0"
             class="rounded-full px-1.5 py-0.5 text-[11px] font-semibold leading-none"
             :class="tasksOverdueCount > 0 ? 'bg-rose-100 text-rose-700' : 'bg-brand-100 text-brand-700'"
           >{{ tasksOpenCount }}</span>
