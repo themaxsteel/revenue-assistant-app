@@ -35,6 +35,7 @@ const tabs = [
   { key: 'channels', label: 'Channels' },
   { key: 'promotions', label: 'Promotions' },
   { key: 'upselling', label: 'Upselling' },
+  { key: 'social', label: 'Social Media' },
   { key: 'agent', label: 'AI Agent' },
   { key: 'monitor', label: 'Monitoring' },
   { key: 'reports', label: 'Reports' },

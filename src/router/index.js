@@ -31,6 +31,7 @@ const routes = [
           { path: 'channels', component: () => import('@/views/property/Channels.vue') },
           { path: 'promotions', component: () => import('@/views/property/Promotions.vue') },
           { path: 'upselling', component: () => import('@/views/property/Upselling.vue') },
+          { path: 'social', component: () => import('@/views/property/Social.vue') },
           { path: 'agent', component: () => import('@/views/property/AgentTab.vue') },
           { path: 'monitor', component: () => import('@/views/property/Monitor.vue') },
           { path: 'tasks', redirect: (to) => `/property/${to.params.id}/overview` },
