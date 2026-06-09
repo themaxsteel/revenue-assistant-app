@@ -1,10 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { ChevronRight, Sparkles, CheckCircle2, LayoutGrid, List, ArrowUpDown, Check } from 'lucide-vue-next'
+import { ChevronRight, Sparkles, CheckCircle2, LayoutGrid, List, CalendarRange, ArrowUpDown, Check } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useUiStore } from '@/stores/ui'
 import PropertyCard from '@/components/PropertyCard.vue'
+import PortfolioCalendar from '@/components/PortfolioCalendar.vue'
 
 const portfolio = usePortfolioStore()
 const agent = useAgentStore()
@@ -240,10 +241,18 @@ const filtered = computed(() => {
         >
           <List class="h-4 w-4" />
         </button>
+        <button
+          class="pressable rounded-lg p-1.5 transition-colors duration-150"
+          :class="view === 'calendar' ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600'"
+          title="Calendar view"
+          @click="view = 'calendar'"
+        >
+          <CalendarRange class="h-4 w-4" />
+        </button>
       </div>
 
-      <!-- Sort by: click → popup -->
-      <div class="relative">
+      <!-- Sort by: click → popup (not shown in calendar view) -->
+      <div v-if="view !== 'calendar'" class="relative">
         <button
           class="pressable inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
           @click="sortOpen = !sortOpen"
@@ -271,8 +280,11 @@ const filtered = computed(() => {
       </div>
     </div>
 
+    <!-- Calendar (matrix) view -->
+    <PortfolioCalendar v-if="view === 'calendar'" :properties="filtered" />
+
     <!-- Card grid -->
-    <div v-if="view === 'card'" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div v-else-if="view === 'card'" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       <div v-for="(p, i) in filtered" :key="p.id" class="stagger-item" :style="{ '--i': i % 8 }">
         <PropertyCard :property="p" />
       </div>

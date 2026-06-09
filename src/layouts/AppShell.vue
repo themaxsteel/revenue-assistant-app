@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, watch } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
@@ -50,8 +51,8 @@ const nav = computed(() => [
   },
   {
     to: '/agent',
-    label: 'Smart Suggestions',
-    icon: 'sparkles',
+    label: 'Smart Suggest',
+    lucide: Sparkles,
     badge: agent.pending.length || null,
     badgeTone: agent.pending.length ? 'amber' : null,
   },
@@ -137,7 +138,13 @@ onMounted(() => agent.resurfaceSnoozed())
           :class="route.path.startsWith(item.to) ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'"
         >
           <span class="relative flex shrink-0 items-center justify-center">
-            <AppIcon :name="item.icon" :size="22" :stroke-width="route.path.startsWith(item.to) ? 2 : 1.75" />
+            <component
+              :is="item.lucide"
+              v-if="item.lucide"
+              :size="22"
+              :stroke-width="route.path.startsWith(item.to) ? 2 : 1.75"
+            />
+            <AppIcon v-else :name="item.icon" :size="22" :stroke-width="route.path.startsWith(item.to) ? 2 : 1.75" />
             <!-- collapsed badge dot -->
             <span
               v-if="ui.sidebarCollapsed && item.badge"
@@ -187,7 +194,7 @@ onMounted(() => agent.resurfaceSnoozed())
 
     <!-- Main -->
     <div
-      class="flex min-h-screen flex-1 flex-col transition-[padding] duration-300 ease-drawer"
+      class="flex min-h-screen min-w-0 flex-1 flex-col transition-[padding] duration-300 ease-drawer"
       :class="[ui.sidebarCollapsed ? 'pl-[68px]' : 'pl-60', chat.open ? 'lg:pr-[440px]' : '']"
     >
       <header class="sticky top-0 z-20 flex items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-6 py-3 backdrop-blur">

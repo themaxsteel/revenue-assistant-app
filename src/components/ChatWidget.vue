@@ -150,16 +150,6 @@ watch(() => [chat.messages.length, chat.typing, chat.open], scrollToBottom)
                     <p class="text-[11px] font-semibold uppercase tracking-wide text-brand-600">Suggested reply</p>
                     <p class="mt-1 rounded-xl bg-slate-50 p-3 text-sm leading-relaxed text-slate-700">{{ m.reply.draft }}</p>
                   </div>
-                  <div>
-                    <p class="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-amber-600">
-                      <Lightbulb class="h-3 w-3" /> Tips
-                    </p>
-                    <ul class="mt-1 space-y-1">
-                      <li v-for="(t, i) in m.reply.tips" :key="i" class="flex items-start gap-1.5 text-sm leading-snug text-slate-600">
-                        <span class="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-amber-400" />{{ t }}
-                      </li>
-                    </ul>
-                  </div>
                   <p class="text-[11px] italic leading-snug text-slate-400">{{ m.reply.note }}</p>
                 </div>
                 <div class="border-t border-slate-100 p-2.5">
