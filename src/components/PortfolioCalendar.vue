@@ -2,8 +2,9 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { ArrowUpRight, ArrowDownRight, MapPin, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import { ArrowUpRight, ArrowDownRight, MapPin, ChevronLeft, ChevronRight, ChevronDown, Pin, Check } from 'lucide-vue-next'
 import { occupancyCell } from '@/mock/occupancyMatrix'
+import { propertyTypeLabel } from '@/mock/properties'
 
 const props = defineProps({
   properties: { type: Array, required: true },
@@ -43,6 +44,8 @@ const SORTS = [
   { key: 'name', label: 'A–Z' },
 ]
 const sortKey = ref('priority')
+const sortOpen = ref(false)
+const sortLabel = computed(() => SORTS.find((s) => s.key === sortKey.value)?.label)
 function attentionRank(p) {
   return p.alertCount > 0 || p.occupancy < 55 || p.paceDelta <= -10 ? 0 : 1
 }
@@ -112,14 +115,72 @@ const groups = computed(() => {
   return out
 })
 
-const rows = computed(() =>
-  visibleProperties.value.map((p) => ({
+// ── D9: group rows by region / type, collapsible ──
+const GROUP_BYS = [
+  { key: 'none', label: 'None' },
+  { key: 'region', label: 'Region' },
+  { key: 'type', label: 'Type' },
+]
+const groupBy = ref('none')
+const groupOpen = ref(false)
+const groupLabel = computed(() => GROUP_BYS.find((g) => g.key === groupBy.value)?.label)
+const collapsed = ref(new Set())
+function groupValue(p) {
+  if (groupBy.value === 'region') return p.city.split('—')[0].trim()
+  if (groupBy.value === 'type') return propertyTypeLabel[p.type] || p.type
+  return null
+}
+function toggleCollapse(key) {
+  const s = new Set(collapsed.value)
+  s.has(key) ? s.delete(key) : s.add(key)
+  collapsed.value = s
+}
+
+// ── D10: pin properties to the top ──
+const pinned = ref(new Set())
+function isPinned(id) {
+  return pinned.value.has(id)
+}
+function togglePin(id) {
+  const s = new Set(pinned.value)
+  s.has(id) ? s.delete(id) : s.add(id)
+  pinned.value = s
+}
+
+function makeRow(p) {
+  return {
     property: p,
     cells: columns.value.map((c) =>
       occupancyCell(p, { year: c.year, month: c.month, day: c.day }),
     ),
-  })),
-)
+  }
+}
+
+// Sections: a pinned section first (if any), then either one flat section or
+// the region/type groups.
+const sections = computed(() => {
+  const base = visibleProperties.value
+  const pins = base.filter((p) => isPinned(p.id))
+  const rest = base.filter((p) => !isPinned(p.id))
+  const out = []
+  if (pins.length) {
+    out.push({ key: '__pinned', label: 'Pinned', pinned: true, count: pins.length, rows: pins.map(makeRow) })
+  }
+  if (groupBy.value === 'none') {
+    out.push({ key: '__all', label: null, count: rest.length, rows: rest.map(makeRow) })
+  } else {
+    const map = new Map()
+    for (const p of rest) {
+      const k = groupValue(p)
+      if (!map.has(k)) map.set(k, [])
+      map.get(k).push(p)
+    }
+    for (const k of [...map.keys()].sort((a, b) => a.localeCompare(b))) {
+      out.push({ key: k, label: k, collapsible: true, count: map.get(k).length, rows: map.get(k).map(makeRow) })
+    }
+  }
+  return out
+})
 
 function heat(occ) {
   if (occ >= 88) return 'bg-emerald-600 text-white'
@@ -213,17 +274,53 @@ function openProperty(p) {
 
       <div class="ml-auto flex items-center gap-2">
         <span class="hidden text-[11px] text-slate-400 sm:inline">{{ visibleProperties.length }} of {{ properties.length }}</span>
-        <span class="text-[11px] font-medium text-slate-400">Sort</span>
-        <div class="flex items-center gap-0.5 rounded-lg border border-slate-200 bg-white p-0.5">
+
+        <!-- Group dropdown -->
+        <div class="relative">
           <button
-            v-for="s in SORTS"
-            :key="s.key"
-            class="pressable rounded-md px-2 py-1 text-xs font-medium transition-colors duration-150"
-            :class="sortKey === s.key ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600'"
-            @click="sortKey = s.key"
+            class="pressable inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
+            @click="groupOpen = !groupOpen"
           >
-            {{ s.label }}
+            <span class="text-slate-400">Group:</span> {{ groupLabel }}
+            <ChevronDown class="h-3.5 w-3.5 text-slate-400" />
           </button>
+          <div v-if="groupOpen" class="fixed inset-0 z-30" @click="groupOpen = false"></div>
+          <div v-if="groupOpen" class="absolute right-0 z-40 mt-1.5 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-pop">
+            <button
+              v-for="g in GROUP_BYS"
+              :key="g.key"
+              class="pressable flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors duration-150"
+              :class="groupBy === g.key ? 'bg-brand-50 font-medium text-brand-700' : 'text-slate-600 hover:bg-slate-50'"
+              @click="groupBy = g.key; groupOpen = false"
+            >
+              {{ g.label }}
+              <Check v-if="groupBy === g.key" class="h-4 w-4 shrink-0 text-brand-600" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Sort dropdown -->
+        <div class="relative">
+          <button
+            class="pressable inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
+            @click="sortOpen = !sortOpen"
+          >
+            <span class="text-slate-400">Sort:</span> {{ sortLabel }}
+            <ChevronDown class="h-3.5 w-3.5 text-slate-400" />
+          </button>
+          <div v-if="sortOpen" class="fixed inset-0 z-30" @click="sortOpen = false"></div>
+          <div v-if="sortOpen" class="absolute right-0 z-40 mt-1.5 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-pop">
+            <button
+              v-for="s in SORTS"
+              :key="s.key"
+              class="pressable flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors duration-150"
+              :class="sortKey === s.key ? 'bg-brand-50 font-medium text-brand-700' : 'text-slate-600 hover:bg-slate-50'"
+              @click="sortKey = s.key; sortOpen = false"
+            >
+              {{ s.label }}
+              <Check v-if="sortKey === s.key" class="h-4 w-4 shrink-0 text-brand-600" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -288,43 +385,80 @@ function openProperty(p) {
           </div>
         </div>
 
-        <!-- Property rows -->
-        <div
-          v-for="(row, ri) in rows"
-          :key="row.property.id"
-          class="flex border-b border-slate-100 last:border-b-0"
-        >
-          <button
-            class="pressable flex items-center gap-2 border-r border-slate-200 px-3 py-2 text-left transition-colors duration-150 hover:bg-slate-50"
-            :class="[nameColClass, ri % 2 ? 'bg-slate-50' : 'bg-white']"
-            @click="openProperty(row.property)"
+        <!-- Sections (pinned + groups), each with property rows -->
+        <template v-for="section in sections" :key="section.key">
+          <!-- Group / pinned band header (whole band clickable to collapse) -->
+          <div
+            v-if="section.label"
+            class="flex border-b border-slate-200 bg-slate-100/80"
+            :class="section.collapsible ? 'cursor-pointer hover:bg-slate-200/70' : ''"
+            @click="section.collapsible && toggleCollapse(section.key)"
           >
-            <span class="min-w-0">
-              <span class="block truncate text-sm font-semibold text-slate-800">{{ row.property.name }}</span>
-              <span class="block truncate text-[11px] text-slate-400">{{ row.property.city }}</span>
-            </span>
-          </button>
-
-          <button
-            v-for="(cell, ci) in row.cells"
-            :key="ci"
-            class="pressable group flex items-center justify-center border-r border-slate-100 p-1 transition-transform duration-150 last:border-r-0 hover:scale-[1.06]"
-            :class="timeColClass"
-            @click="openProperty(row.property)"
-            @mouseenter="showTip($event, row.property, cell, columns[ci])"
-            @mouseleave="hideTip"
-          >
-            <span
-              class="flex h-[44px] w-full items-center justify-center rounded-lg text-xs font-bold leading-none shadow-sm"
-              :class="heat(cell.occupancy)"
+            <div
+              class="flex items-center gap-1.5 border-r border-slate-200 bg-slate-100 px-3 py-1.5"
+              :class="nameColClass"
             >
-              {{ cell.occupancy }}%
-            </span>
-          </button>
-        </div>
+              <template v-if="section.collapsible">
+                <ChevronDown v-if="!collapsed.has(section.key)" class="h-4 w-4 text-slate-400" />
+                <ChevronRight v-else class="h-4 w-4 text-slate-400" />
+              </template>
+              <Pin v-else class="h-3.5 w-3.5 fill-brand-500 text-brand-500" />
+              <span class="truncate text-xs font-bold text-slate-700">{{ section.label }}</span>
+              <span class="rounded-full bg-slate-200 px-1.5 text-[10px] font-bold leading-tight text-slate-500">{{ section.count }}</span>
+            </div>
+            <div class="flex-1"></div>
+          </div>
+
+          <!-- Rows -->
+          <template v-if="!section.collapsible || !collapsed.has(section.key)">
+            <div
+              v-for="(row, ri) in section.rows"
+              :key="row.property.id"
+              class="group/row flex border-b border-slate-100 last:border-b-0"
+            >
+              <div
+                class="flex items-center gap-1 border-r border-slate-200 pl-2 pr-1 transition-colors duration-150 hover:bg-slate-50"
+                :class="[nameColClass, ri % 2 ? 'bg-slate-50' : 'bg-white']"
+              >
+                <button
+                  class="pressable flex shrink-0 items-center transition-all duration-150 hover:text-brand-600"
+                  :class="isPinned(row.property.id) ? 'text-brand-500' : 'text-slate-300 opacity-0 group-hover/row:opacity-100'"
+                  :title="isPinned(row.property.id) ? 'Unpin' : 'Pin to top'"
+                  @click.stop="togglePin(row.property.id)"
+                >
+                  <Pin class="h-3.5 w-3.5" :class="isPinned(row.property.id) ? 'fill-brand-500' : ''" />
+                </button>
+                <button
+                  class="pressable min-w-0 flex-1 py-2 text-left"
+                  @click="openProperty(row.property)"
+                >
+                  <span class="block truncate text-sm font-semibold text-slate-800">{{ row.property.name }}</span>
+                  <span class="block truncate text-[11px] text-slate-400">{{ row.property.city }}</span>
+                </button>
+              </div>
+
+              <button
+                v-for="(cell, ci) in row.cells"
+                :key="ci"
+                class="pressable group flex items-center justify-center border-r border-slate-100 p-1 transition-transform duration-150 last:border-r-0 hover:scale-[1.06]"
+                :class="timeColClass"
+                @click="openProperty(row.property)"
+                @mouseenter="showTip($event, row.property, cell, columns[ci])"
+                @mouseleave="hideTip"
+              >
+                <span
+                  class="flex h-[44px] w-full items-center justify-center rounded-lg text-xs font-bold leading-none shadow-sm"
+                  :class="heat(cell.occupancy)"
+                >
+                  {{ cell.occupancy }}%
+                </span>
+              </button>
+            </div>
+          </template>
+        </template>
 
         <!-- Empty state when a filter matches nothing -->
-        <p v-if="!rows.length" class="px-4 py-12 text-center text-sm text-slate-400">
+        <p v-if="!visibleProperties.length" class="px-4 py-12 text-center text-sm text-slate-400">
           No properties match this filter.
         </p>
       </div>

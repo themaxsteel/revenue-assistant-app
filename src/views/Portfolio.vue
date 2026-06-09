@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { ChevronRight, Sparkles, CheckCircle2, LayoutGrid, List, CalendarRange, ArrowUpDown, Check } from 'lucide-vue-next'
+import { ChevronRight, Sparkles, CheckCircle2, List, CalendarRange, ArrowUpDown, Check } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useUiStore } from '@/stores/ui'
@@ -223,16 +223,8 @@ const filtered = computed(() => {
       <p class="shrink-0 text-sm font-semibold text-slate-700">Properties</p>
       <div class="h-px flex-1 bg-slate-200"></div>
 
-      <!-- View: card / list -->
+      <!-- View: list / calendar -->
       <div class="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white p-0.5">
-        <button
-          class="pressable rounded-lg p-1.5 transition-colors duration-150"
-          :class="view === 'card' ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600'"
-          title="Card view"
-          @click="view = 'card'"
-        >
-          <LayoutGrid class="h-4 w-4" />
-        </button>
         <button
           class="pressable rounded-lg p-1.5 transition-colors duration-150"
           :class="view === 'list' ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600'"
@@ -283,12 +275,6 @@ const filtered = computed(() => {
     <!-- Calendar (matrix) view -->
     <PortfolioCalendar v-if="view === 'calendar'" :properties="filtered" />
 
-    <!-- Card grid -->
-    <div v-else-if="view === 'card'" class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      <div v-for="(p, i) in filtered" :key="p.id" class="stagger-item" :style="{ '--i': i % 8 }">
-        <PropertyCard :property="p" />
-      </div>
-    </div>
     <!-- List (2 columns) -->
     <div v-else class="mt-4 grid grid-cols-1 gap-2 lg:grid-cols-2">
       <div v-for="(p, i) in filtered" :key="p.id" class="stagger-item" :style="{ '--i': i % 8 }">
