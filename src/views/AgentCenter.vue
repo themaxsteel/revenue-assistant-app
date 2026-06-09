@@ -1,11 +1,9 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { Bot, Zap, History, Sliders, ShieldCheck, ArrowRight } from 'lucide-vue-next'
+import { Bot, ShieldCheck } from 'lucide-vue-next'
 import { useAgentStore } from '@/stores/agent'
 import { usePortfolioStore } from '@/stores/portfolio'
 import RecommendationCard from '@/components/RecommendationCard.vue'
-import AutonomySelector from '@/components/AutonomySelector.vue'
-import AppButton from '@/components/ui/AppButton.vue'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import dayjs from 'dayjs'
@@ -30,18 +28,15 @@ const propName = (id) => portfolio.byId(id)?.name
   <div>
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900"><Bot class="h-5 w-5 text-brand-600" /> AI Agent Center</h1>
-        <p class="text-sm text-slate-500">{{ agent.pending.length }} pending · est. {{ idr(agent.estPipeline, { compact: true }) }}/wk impact in the pipeline</p>
+        <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900"><Bot class="h-5 w-5 text-brand-600" /> AI Recommendations</h1>
+        <p class="text-sm text-slate-500">{{ agent.pending.length }} pending · est. {{ idr(agent.estPipeline, { compact: true }) }}/wk impact — every action needs your approval</p>
       </div>
-      <AppButton variant="primary" size="sm" :disabled="agent.autoEligible.length === 0" @click="agent.approveAllAuto()">
-        <Zap class="h-4 w-4" /> Run {{ agent.autoEligible.length }} auto-eligible
-      </AppButton>
     </div>
 
     <!-- Tabs -->
     <div class="mt-4 flex gap-1 border-b border-slate-200">
       <button
-        v-for="t in [['inbox','Recommendations',inbox.length],['log','Activity log',agent.log.length],['autonomy','Autonomy',portfolio.count]]"
+        v-for="t in [['inbox','Recommendations',inbox.length],['log','Activity log',agent.log.length]]"
         :key="t[0]"
         class="pressable relative px-3.5 py-2.5 text-sm font-medium transition-colors duration-150 ease-out"
         :class="tab === t[0] ? 'text-brand-700' : 'text-slate-500 hover:text-slate-700'"
@@ -56,7 +51,7 @@ const propName = (id) => portfolio.byId(id)?.name
     <div v-if="tab === 'inbox'" class="mt-5">
       <div class="mb-3 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 text-xs w-fit">
         <button
-          v-for="f in [['all','All'],['approval','Needs approval'],['auto','Auto-eligible'],['snoozed','Snoozed']]"
+          v-for="f in [['all','All'],['approval','Needs review'],['auto','Low risk'],['snoozed','Snoozed']]"
           :key="f[0]"
           class="pressable rounded-lg px-3 py-1.5 font-medium transition-colors duration-150 ease-out"
           :class="filter === f[0] ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:text-slate-700'"
@@ -82,7 +77,7 @@ const propName = (id) => portfolio.byId(id)?.name
     </div>
 
     <!-- Activity log -->
-    <div v-else-if="tab === 'log'" class="mt-5">
+    <div v-else class="mt-5">
       <Card title="Audit trail" subtitle="Every action the agent executed or you approved">
         <ol class="relative space-y-4 border-l border-slate-100 pl-5">
           <li v-for="a in agent.log" :key="a.id" class="relative">
@@ -97,21 +92,6 @@ const propName = (id) => portfolio.byId(id)?.name
             </p>
           </li>
         </ol>
-      </Card>
-    </div>
-
-    <!-- Autonomy overview -->
-    <div v-else class="mt-5">
-      <Card title="Per-property autonomy" subtitle="Manual · Suggest · Auto (within guardrails)">
-        <div class="divide-y divide-slate-100">
-          <div v-for="p in portfolio.properties" :key="p.id" class="flex items-center justify-between gap-3 py-2.5">
-            <RouterLink :to="`/property/${p.id}/agent`" class="min-w-0 flex-1 truncate text-sm font-medium text-slate-700 hover:text-brand-700">
-              {{ p.name }}
-            </RouterLink>
-            <span class="hidden text-xs text-slate-400 sm:inline">{{ agent.forProperty(p.id).filter(r => r.status==='pending').length }} pending</span>
-            <AutonomySelector :property-id="p.id" size="sm" />
-          </div>
-        </div>
       </Card>
     </div>
   </div>

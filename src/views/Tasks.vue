@@ -309,7 +309,7 @@ const groupedActivities = computed(() => {
               </span>
               <div class="flex flex-wrap items-center gap-2">
                 <p class="text-sm font-medium text-slate-800">{{ a.summary }}</p>
-                <Badge :tone="a.kind === 'ai' ? 'brand' : 'green'" size="sm">{{ a.kind === 'ai' ? 'AI Agent' : 'Manual' }}</Badge>
+                <Badge :tone="a.kind === 'ai' ? 'brand' : 'green'" size="sm">{{ a.kind === 'ai' ? 'AI Recommendation' : 'Manual' }}</Badge>
                 <span v-if="a.impact" class="text-xs font-semibold text-emerald-600">+{{ idr(a.impact, { compact: true }) }}</span>
               </div>
               <p class="mt-0.5 text-xs text-slate-400">

@@ -7,6 +7,7 @@ export const useUiStore = defineStore('ui', {
     sidebarCollapsed: false,
     search: '',
     toasts: [],
+    propertiesView: 'card', // 'card' | 'list' — persists across navigation
   }),
   actions: {
     toggleSidebar() {

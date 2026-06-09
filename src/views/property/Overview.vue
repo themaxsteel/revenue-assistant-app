@@ -14,7 +14,6 @@ import StatCard from '@/components/ui/StatCard.vue'
 import Card from '@/components/ui/Card.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import Badge from '@/components/ui/Badge.vue'
-import Sparkline from '@/components/ui/Sparkline.vue'
 import TaskItem from '@/components/TaskItem.vue'
 import TaskDetailModal from '@/components/TaskDetailModal.vue'
 import Modal from '@/components/ui/Modal.vue'
@@ -31,7 +30,6 @@ const ui = useUiStore()
 const pending = computed(() =>
   agent.forProperty(props.property.id).filter((r) => r.status === 'pending'),
 )
-const log = computed(() => agent.logForProperty(props.property.id).slice(0, 5))
 const alerts = computed(() =>
   portfolio.alerts.filter((a) => a.propertyId === props.property.id && !a.resolved),
 )
@@ -273,19 +271,6 @@ watch(() => route.query.focus, applyFocus, { immediate: true })
         <p v-else class="py-6 text-center text-sm text-slate-400">No pending recommendations — this property is on track.</p>
       </Card>
 
-      <Card title="Recent agent activity">
-        <ol v-if="log.length" class="space-y-3">
-          <li v-for="a in log" :key="a.id" class="text-sm">
-            <div class="flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full" :class="a.byAgent ? 'bg-brand-500' : 'bg-emerald-500'" />
-              <p class="font-medium text-slate-700">{{ a.summary }}</p>
-            </div>
-            <p class="ml-4 text-xs text-slate-400">{{ dayjs(a.timestamp).format('DD MMM, HH:mm') }} · {{ a.byAgent ? 'Auto' : 'Approved' }}</p>
-          </li>
-        </ol>
-        <p v-else class="py-4 text-center text-sm text-slate-400">No activity yet.</p>
-      </Card>
-
       <Card v-if="alerts.length" title="Active alerts">
         <ul class="space-y-2">
           <li
@@ -304,10 +289,6 @@ watch(() => route.query.focus, applyFocus, { immediate: true })
         </ul>
       </Card>
 
-      <Card title="14-day occupancy trend" padding="p-5">
-        <Sparkline :data="property.sparkline" :tone="property.paceDelta >= 0 ? 'green' : 'red'" :width="240" :height="56" />
-        <p class="mt-2 text-xs text-slate-400">Booking pace {{ property.paceDelta > 0 ? '+' : '' }}{{ property.paceDelta }}% vs last year.</p>
-      </Card>
     </div>
   </div>
 

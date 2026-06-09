@@ -3,7 +3,18 @@ import { rng, range, intRange } from './util'
 
 // Channel / distribution mix per property. Drives Channels & Distribution tab
 // and the portfolio channel-contribution chart in Analytics.
-const CHANNELS = ['Direct', 'Booking.com', 'Agoda', 'Airbnb', 'Traveloka', 'Expedia']
+const CHANNELS = [
+  'Direct',
+  'Booking.com',
+  'Agoda',
+  'Airbnb',
+  'Traveloka',
+  'Expedia',
+  'Tiket.com',
+  'Trip.com',
+  'Pegipegi',
+  'Tripadvisor',
+]
 
 export function channelsFor(id) {
   const p = propertyById(id)

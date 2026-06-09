@@ -2,11 +2,12 @@ import dayjs from 'dayjs'
 import { properties } from './properties'
 import { rng, pick, intRange, idr } from './util'
 
-// Audit trail of actions the AI Agent already executed (auto mode) or that the
-// RA approved. The Pinia agent store appends new entries as the user acts.
+// Audit trail of actions the Revenue Assistant approved. Nothing runs
+// automatically — every entry was confirmed by the RA. The Pinia agent store
+// appends new entries as the user acts.
 
-const AUTO_ACTIONS = [
-  (p) => ({ type: 'rate_nudge', summary: `Auto-raised weekend rate +6%`, before: idr(p.adr), after: idr(p.adr * 1.06) }),
+const ACTIONS = [
+  (p) => ({ type: 'rate_nudge', summary: `Raised weekend rate +6%`, before: idr(p.adr), after: idr(p.adr * 1.06) }),
   (p) => ({ type: 'parity_sync', summary: `Re-synced parity across 4 OTAs`, before: 'breach', after: 'in parity' }),
   (p) => ({ type: 'ota_open', summary: `Reopened Agoda inventory (30 days)`, before: 'closed', after: 'open' }),
   (p) => ({ type: 'min_stay', summary: `Applied 2-night min-stay on peak dates`, before: '1 night', after: '2 nights' }),
@@ -20,13 +21,13 @@ properties.forEach((p, i) => {
   const count = intRange(rand, 1, 3)
   for (let k = 0; k < count; k++) {
     n += 1
-    const a = pick(rand, AUTO_ACTIONS)(p)
+    const a = pick(rand, ACTIONS)(p)
     log.push({
       id: `act-${String(n).padStart(3, '0')}`,
       propertyId: p.id,
       timestamp: dayjs().subtract(intRange(rand, 1, 72), 'hour').toISOString(),
-      mode: 'auto',
-      byAgent: true,
+      mode: 'approved',
+      byAgent: false,
       ...a,
     })
   }

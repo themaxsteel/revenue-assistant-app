@@ -1,5 +1,21 @@
 import { rng, pick, intRange, range, clamp } from './util'
 
+// Curated Unsplash hospitality shots (villas, resorts, tropical stays). Assigned
+// deterministically per property so each card keeps the same photo. The UI falls
+// back to an on-brand gradient if a URL fails to load (offline / removed photo).
+const PHOTO_IDS = [
+  '1566073771259-6a8506099945', '1571896349842-33c89424de2d', '1582719478250-c89cae4dc85b',
+  '1520250497591-112f2f40a3f4', '1540541338287-41700207dee6', '1564013799919-ab600027ffc6',
+  '1505691938895-1758d7feb511', '1512917774080-9991f1c4c750', '1551882547-ff40c63fe5fa',
+  '1507525428034-b723cf961d3e', '1518684079-3c830dcef090', '1439066615861-d1af74d74000',
+  '1596394516093-501ba68a0ba6', '1455587734955-081b22074882', '1571003123894-1f0594d2b5d9',
+  '1559599189-fe84dea4eb79', '1502672260266-1c1ef2d93688', '1520637736862-4d197d17c52a',
+  '1521783988139-89397d761dce', '1470770841072-f978cf4d019e',
+]
+function propertyPhoto(i, size = 640) {
+  return `https://images.unsplash.com/photo-${PHOTO_IDS[i % PHOTO_IDS.length]}?auto=format&fit=crop&w=${size}&q=70`
+}
+
 // 20 small properties across Indonesian leisure destinations.
 const NAMES = [
   ['Uluwatu Cliff Villas', 'villa', 'Bali — Uluwatu'],
@@ -63,6 +79,7 @@ export const properties = NAMES.map(([name, type, city], i) => {
     name,
     type,
     city,
+    image: propertyPhoto(i),
     units,
     occupancy,
     adr,

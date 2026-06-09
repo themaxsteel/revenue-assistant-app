@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Check, X, Clock, Zap, ShieldCheck, ArrowRight, Sparkles, ListPlus } from 'lucide-vue-next'
+import { Check, X, Clock, ShieldCheck, ArrowRight, Sparkles, ListPlus } from 'lucide-vue-next'
 import Badge from './ui/Badge.vue'
 import AppButton from './ui/AppButton.vue'
 import { useAgentStore } from '@/stores/agent'
@@ -41,9 +41,9 @@ const impactM = computed(() => (props.rec.estImpact / 1_000_000).toFixed(1))
     <div class="flex items-start justify-between gap-3">
       <div class="min-w-0">
         <div class="flex flex-wrap items-center gap-2">
-          <Badge :tone="rec.risk === 'auto' ? 'brand' : 'amber'" size="sm">
-            <component :is="rec.risk === 'auto' ? Zap : ShieldCheck" class="h-3 w-3" />
-            {{ rec.risk === 'auto' ? 'Auto-eligible' : 'Needs approval' }}
+          <Badge :tone="rec.risk === 'auto' ? 'green' : 'amber'" size="sm">
+            <ShieldCheck class="h-3 w-3" />
+            {{ rec.risk === 'auto' ? 'Low risk' : 'Needs review' }}
           </Badge>
           <Badge v-if="statusMap[rec.status]" :tone="statusMap[rec.status].tone" size="sm">
             {{ statusMap[rec.status].label }}

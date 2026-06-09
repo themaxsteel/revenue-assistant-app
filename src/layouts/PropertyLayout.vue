@@ -8,7 +8,6 @@ import { useMonitorStore } from '@/stores/monitor'
 import { propertyTypeLabel } from '@/mock/properties'
 import HealthRing from '@/components/ui/HealthRing.vue'
 import Badge from '@/components/ui/Badge.vue'
-import AutonomySelector from '@/components/AutonomySelector.vue'
 
 const props = defineProps({ id: String })
 const route = useRoute()
@@ -27,17 +26,16 @@ const tasksOverdueCount = computed(() =>
   tasksStore.overdue.filter((t) => t.propertyId === props.id).length,
 )
 
+// Promotions & Upselling hidden for now (routes still exist).
 const tabs = [
   { key: 'overview', label: 'Overview' },
+  { key: 'monitor', label: 'Monitoring' },
   { key: 'pricing', label: 'Pricing & Calendar' },
   { key: 'forecast', label: 'Demand & Forecast' },
   { key: 'compset', label: 'Compset' },
   { key: 'channels', label: 'Channels' },
-  { key: 'promotions', label: 'Promotions' },
-  { key: 'upselling', label: 'Upselling' },
   { key: 'social', label: 'Social Media' },
-  { key: 'agent', label: 'AI Agent' },
-  { key: 'monitor', label: 'Monitoring' },
+  { key: 'agent', label: 'AI Recommendations' },
   { key: 'reports', label: 'Reports' },
 ]
 const base = computed(() => `/property/${props.id}`)
@@ -101,10 +99,6 @@ function toggleReviewed() {
           <component :is="reviewedToday ? CheckCircle2 : Circle" class="h-3.5 w-3.5" />
           {{ reviewedToday ? 'Reviewed today' : 'Mark reviewed' }}
         </button>
-        <div class="flex items-center gap-2">
-          <span class="text-[11px] font-medium uppercase text-slate-400">AI Autonomy</span>
-          <AutonomySelector :property-id="property.id" />
-        </div>
       </div>
     </div>
 

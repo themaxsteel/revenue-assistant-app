@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, watch } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
+import { Sparkles } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
@@ -39,7 +40,7 @@ watch(
 
 const nav = computed(() => [
   { to: '/portfolio', label: 'Portfolio', icon: 'portfolio', badge: portfolio.count },
-  { to: '/agent', label: 'AI Agent', icon: 'agent', badge: agent.pending.length },
+  // AI Recommendations lives in the topbar button only (route still exists).
   {
     to: '/monitor',
     label: 'Monitoring',
@@ -57,9 +58,10 @@ const nav = computed(() => [
   },
   { to: '/reports', label: 'Owner Reports', icon: 'reports', badge: null },
   { to: '/social', label: 'Social Media', icon: 'social', badge: null },
-  { to: '/analytics', label: 'Analytics', icon: 'analytics', badge: null },
-  { to: '/alerts', label: 'Alerts', icon: 'bell', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
-  { to: '/settings', label: 'Settings', icon: 'settings', badge: null },
+  // Hidden for now (routes still exist): Analytics, Alerts, Settings
+  // { to: '/analytics', label: 'Analytics', icon: 'analytics', badge: null },
+  // { to: '/alerts', label: 'Alerts', icon: 'bell', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
+  // { to: '/settings', label: 'Settings', icon: 'settings', badge: null },
 ])
 
 // Global search → quick-jump to a property (works from any page).
@@ -96,8 +98,12 @@ onMounted(() => agent.resurfaceSnoozed())
         <AppIcon :name="ui.sidebarCollapsed ? 'expand' : 'collapse'" :size="15" />
       </button>
 
-      <!-- Brand -->
-      <div class="flex items-center px-4 py-5">
+      <!-- Brand — click to expand/collapse the sidebar -->
+      <button
+        class="pressable flex w-full items-center px-4 py-5 text-left"
+        :title="ui.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
+        @click="ui.toggleSidebar()"
+      >
         <img :src="logoUrl" alt="RatePilot" class="h-9 w-9 shrink-0 rounded-xl object-cover shadow-sm" />
         <div
           class="min-w-0 overflow-hidden whitespace-nowrap transition-all duration-300 ease-drawer"
@@ -106,7 +112,7 @@ onMounted(() => agent.resurfaceSnoozed())
           <p class="truncate text-sm font-bold leading-tight text-slate-900">RatePilot</p>
           <p class="text-[11px] text-slate-400">Revenue Assistant</p>
         </div>
-      </div>
+      </button>
 
       <nav class="flex-1 space-y-1 px-3 py-2">
         <RouterLink
@@ -197,10 +203,17 @@ onMounted(() => agent.resurfaceSnoozed())
           </div>
         </div>
         <div class="ml-auto flex items-center gap-2 text-sm">
-          <RouterLink to="/alerts" class="pressable relative rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50">
-            <AppIcon name="bell" :size="18" />
-            <span v-if="portfolio.unreadAlerts" class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-              {{ portfolio.unreadAlerts }}
+          <!-- AI Recommendations — jump to the recommendation inbox -->
+          <RouterLink
+            to="/agent"
+            class="pressable relative inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 font-medium transition-colors duration-150 ease-out"
+            :class="route.path.startsWith('/agent') ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+            title="AI Recommendations"
+          >
+            <Sparkles class="h-[17px] w-[17px]" />
+            <span class="hidden sm:inline">AI Recommendations</span>
+            <span v-if="agent.pending.length" class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+              {{ agent.pending.length }}
             </span>
           </RouterLink>
           <!-- AI Assistant toggle -->

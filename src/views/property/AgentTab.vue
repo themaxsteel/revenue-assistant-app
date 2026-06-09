@@ -5,7 +5,6 @@ import dayjs from 'dayjs'
 import { ShieldCheck } from 'lucide-vue-next'
 import { useAgentStore } from '@/stores/agent'
 import RecommendationCard from '@/components/RecommendationCard.vue'
-import AutonomySelector from '@/components/AutonomySelector.vue'
 import Card from '@/components/ui/Card.vue'
 
 const props = defineProps({ property: Object })
@@ -52,12 +51,10 @@ watch(() => route.query.focus, applyFocus, { immediate: true })
     </div>
 
     <div class="space-y-4">
-      <Card title="Autonomy mode" padding="p-5">
-        <AutonomySelector :property-id="property.id" />
-        <p class="mt-3 text-xs text-slate-400">
-          <strong class="text-slate-600">Auto</strong> executes low-risk reversible actions in guardrails.
-          <strong class="text-slate-600">Suggest</strong> waits for your approval.
-          <strong class="text-slate-600">Manual</strong> shows insights only.
+      <Card title="How this works" padding="p-5">
+        <p class="text-xs leading-relaxed text-slate-500">
+          The Revenue Assistant reviews this property and prepares recommendations with the reasoning behind each one.
+          <strong class="text-slate-600">Nothing is applied automatically</strong> — you approve, reject, or snooze every action.
         </p>
       </Card>
 

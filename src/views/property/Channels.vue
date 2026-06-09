@@ -2,10 +2,12 @@
 import { ref, computed } from 'vue'
 import { AlertTriangle, CheckCircle2 } from 'lucide-vue-next'
 import { channelsFor } from '@/mock/channels'
+import { channelLogos } from '@/mock/channelLogos'
 import { useUiStore } from '@/stores/ui'
 import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Toggle from '@/components/ui/Toggle.vue'
+import AppIcon from '@/components/ui/AppIcon.vue'
 import ChannelMix from '@/components/charts/ChannelMix.vue'
 import { idr } from '@/mock/util'
 
@@ -40,9 +42,20 @@ function syncParity(c) {
           </thead>
           <tbody class="divide-y divide-slate-50">
             <tr v-for="c in channels" :key="c.name">
-              <td class="py-2.5 font-medium text-slate-700">
-                {{ c.name }}
-                <span v-if="c.commission" class="ml-1 text-[11px] text-slate-400">({{ c.commission }}%)</span>
+              <td class="py-2.5">
+                <div class="flex items-center gap-2.5">
+                  <img
+                    v-if="channelLogos[c.name]"
+                    :src="channelLogos[c.name]"
+                    :alt="c.name"
+                    class="h-6 w-6 shrink-0 rounded-md border border-slate-100 bg-white object-contain p-0.5"
+                  />
+                  <span v-else class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white">
+                    <AppIcon name="logo" :size="13" />
+                  </span>
+                  <span class="font-medium text-slate-700">{{ c.name }}</span>
+                  <span v-if="c.commission" class="text-[11px] text-slate-400">({{ c.commission }}%)</span>
+                </div>
               </td>
               <td class="py-2.5 text-right text-slate-600">{{ c.share }}%</td>
               <td class="py-2.5 text-right text-slate-600">{{ c.bookings }}</td>
