@@ -122,6 +122,18 @@ export const useMonitorStore = defineStore('monitor', {
       useUiStore().toast('Now tracking this action in Monitoring')
       return id
     },
+    // Close out a monitored action. Nothing is applied/reverted by the system —
+    // the RA acts manually; this just clears it from "needs decision".
+    close(id, decision = 'closed') {
+      const a = this.byId(id)
+      if (!a) return
+      a.status = 'decided'
+      a.decision = decision
+      useUiStore().toast(
+        decision === 'tasked' ? 'Added to your tasks — handle it manually' : 'Monitoring closed',
+        decision === 'tasked' ? 'success' : 'neutral',
+      )
+    },
     extend(id, days = 7) {
       const a = this.byId(id)
       if (!a) return

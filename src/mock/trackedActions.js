@@ -238,4 +238,6 @@ export const DECISION_META = {
   stopped: { tone: 'slate', label: 'Stopped' },
   made_permanent: { tone: 'green', label: 'Made permanent' },
   rolled_back: { tone: 'red', label: 'Rolled back' },
+  tasked: { tone: 'brand', label: 'Added to task' },
+  closed: { tone: 'slate', label: 'Closed' },
 }
