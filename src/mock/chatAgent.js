@@ -114,7 +114,7 @@ export function respondToChat(rawMessage, ctx = {}) {
         `You have ${agent.pending.length} recommendations pending` +
         ` — est. ${idr(agent.estPipeline, { compact: true })}/wk in impact.\n` +
         `Nothing is applied automatically — you approve each one.\n` +
-        `Open AI Recommendations to review them.`,
+        `Open Smart Suggestions to review them.`,
       suggestions: ['Which properties need attention?', 'Give me a portfolio summary'],
     }
   }

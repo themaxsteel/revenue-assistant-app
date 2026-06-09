@@ -28,7 +28,7 @@ const propName = (id) => portfolio.byId(id)?.name
   <div>
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900"><Bot class="h-5 w-5 text-brand-600" /> AI Recommendations</h1>
+        <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900"><Bot class="h-5 w-5 text-brand-600" /> Smart Suggestions</h1>
         <p class="text-sm text-slate-500">{{ agent.pending.length }} pending · est. {{ idr(agent.estPipeline, { compact: true }) }}/wk impact — add the ones you want to your tasks and apply them yourself</p>
       </div>
     </div>

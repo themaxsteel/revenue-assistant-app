@@ -31,7 +31,7 @@ const tasksOverdueCount = computed(() =>
 // Promotions & Upselling hidden for now (routes still exist).
 const tabs = [
   { key: 'overview', label: 'Overview' },
-  { key: 'agent', label: 'AI Recommendations' },
+  { key: 'agent', label: 'Smart Suggestions' },
   { key: 'monitor', label: 'Monitoring' },
   { key: 'pricing', label: 'Pricing & Calendar' },
   { key: 'forecast', label: 'Demand & Forecast' },

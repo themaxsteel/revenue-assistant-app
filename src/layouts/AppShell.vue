@@ -1,7 +1,6 @@
 <script setup>
 import { computed, onMounted, watch } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
-import { Sparkles } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
@@ -42,13 +41,19 @@ watch(
 
 const nav = computed(() => [
   { to: '/portfolio', label: 'Portfolio', icon: 'portfolio', badge: portfolio.count },
-  // AI Recommendations lives in the topbar button only (route still exists).
   {
     to: '/monitor',
     label: 'Monitoring',
     icon: 'monitor',
     badge: monitor.needsDecision.length || null,
     badgeTone: monitor.needsDecision.length ? 'amber' : null,
+  },
+  {
+    to: '/agent',
+    label: 'Smart Suggestions',
+    icon: 'sparkles',
+    badge: agent.pending.length || null,
+    badgeTone: agent.pending.length ? 'amber' : null,
   },
   // Surface overdue (red) over plain open count — overdue is what hurts.
   {
@@ -58,7 +63,6 @@ const nav = computed(() => [
     badge: tasks.overdue.length || tasks.open.length || null,
     badgeTone: tasks.overdue.length ? 'red' : null,
   },
-  { to: '/reports', label: 'Owner Reports', icon: 'reports', badge: null },
   { to: '/social', label: 'Social Media', icon: 'social', badge: null },
   {
     to: '/reputation',
@@ -67,6 +71,7 @@ const nav = computed(() => [
     badge: reputation.needsReply.length || null,
     badgeTone: reputation.needsReply.length ? 'amber' : null,
   },
+  { to: '/reports', label: 'Owner Reports', icon: 'reports', badge: null },
   // Hidden for now (routes still exist): Analytics, Alerts, Settings
   // { to: '/analytics', label: 'Analytics', icon: 'analytics', badge: null },
   // { to: '/alerts', label: 'Alerts', icon: 'bell', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
@@ -212,19 +217,6 @@ onMounted(() => agent.resurfaceSnoozed())
           </div>
         </div>
         <div class="ml-auto flex items-center gap-2 text-sm">
-          <!-- AI Recommendations — jump to the recommendation inbox -->
-          <RouterLink
-            to="/agent"
-            class="pressable relative inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 font-medium transition-colors duration-150 ease-out"
-            :class="route.path.startsWith('/agent') ? 'border-brand-300 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
-            title="AI Recommendations"
-          >
-            <Sparkles class="h-[17px] w-[17px]" />
-            <span class="hidden sm:inline">AI Recommendations</span>
-            <span v-if="agent.pending.length" class="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
-              {{ agent.pending.length }}
-            </span>
-          </RouterLink>
           <!-- AI Assistant toggle -->
           <button
             class="pressable relative inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 font-medium transition-colors duration-150 ease-out"
