@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import { seedTasks, seedActivities } from '@/mock/tasks'
 import { useAgentStore } from './agent'
 import { useUiStore } from './ui'
+import { idr } from '@/mock/util'
 
 let taskCounter = 100
 let actCounter = 100
@@ -140,13 +141,18 @@ export const useTasksStore = defineStore('tasks', {
         useUiStore().toast('Already in your tasks', 'neutral')
         return
       }
+      // Concrete, do-it-yourself instruction so the RA knows exactly what to change.
+      const instruction =
+        rec.type?.includes('rate') && rec.recommendedRate
+          ? `Set the nightly rate to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%).`
+          : rec.applyLabel || rec.drivers?.[0] || ''
       this.addTask({
-        title: `Follow up: ${rec.title}`,
+        title: `Apply: ${rec.title}`,
         propertyId: rec.propertyId,
         priority: rec.risk === 'approval' ? 'high' : 'medium',
         dueAt: dayjs().add(1, 'day').toISOString(),
         link: { type: 'recommendation', id: rec.id, label: 'AI recommendation' },
-        note: rec.drivers?.[0] || '',
+        note: [instruction, rec.drivers?.[0]].filter(Boolean).join(' ').trim(),
       })
       // Pinned recommendations leave the AI inbox — the RA owns it now.
       useAgentStore().markTasked(rec.id)

@@ -165,3 +165,62 @@ export function respondToChat(rawMessage, ctx = {}) {
     suggestions: DEFAULT_SUGGESTIONS,
   }
 }
+
+// Step-by-step "how to do it yourself" per recommendation type. Nothing is
+// applied automatically — the RA performs the change manually.
+function howToSteps(rec, where) {
+  if (rec.type?.includes('rate')) {
+    return [
+      `Open the “Pricing & Calendar” tab for ${where}.`,
+      `Set the nightly rate to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}% vs the current ${idr(rec.currentRate)}).`,
+      `Save the change, then mark your task as done.`,
+    ]
+  }
+  if (rec.type === 'parity_sync') {
+    return [
+      `Open the “Channels” tab for ${where}.`,
+      `Find the OTA flagged out of parity and re-sync its rate.`,
+      `Confirm it shows “in parity”, then mark your task as done.`,
+    ]
+  }
+  if (rec.type === 'ota_open') {
+    return [
+      `Open the “Channels” tab for ${where}.`,
+      `Reopen the closed OTA inventory for the affected dates.`,
+      `Mark your task as done.`,
+    ]
+  }
+  if (rec.type === 'min_stay') {
+    return [
+      `Open the “Pricing & Calendar” tab for ${where}.`,
+      `Apply the minimum-stay on the peak dates noted.`,
+      `Mark your task as done.`,
+    ]
+  }
+  return [
+    `Open the relevant tab for ${where}.`,
+    rec.applyLabel || 'Apply the change described above.',
+    `Mark your task as done.`,
+  ]
+}
+
+// Tailored, data-grounded explanation of a single recommendation (what / why /
+// how) for the chat widget. Side-effect free.
+export function explainRecommendation(rec, propName) {
+  const where = propName || 'this property'
+  const lines = [`Here's the breakdown for “${rec.title}”${propName ? ` at ${propName}` : ''}:`, '', 'WHAT']
+  if (rec.type?.includes('rate')) {
+    lines.push(`Change the nightly rate from ${idr(rec.currentRate)} to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%).`)
+  } else {
+    lines.push(rec.applyLabel || rec.title)
+  }
+  lines.push('', 'WHY')
+  ;(rec.drivers || []).forEach((d) => lines.push(`• ${d}`))
+  if (rec.confidence) {
+    lines.push(`Confidence ${rec.confidence}% · est. ${idr(rec.estImpact, { compact: true })}/wk impact.`)
+  }
+  lines.push('', 'HOW TO DO IT')
+  howToSteps(rec, where).forEach((s, i) => lines.push(`${i + 1}. ${s}`))
+  lines.push('', "I don't apply anything automatically — add this to your tasks and make the change yourself.")
+  return { text: lines.join('\n') }
+}

@@ -1,24 +1,27 @@
 <script setup>
 import { computed } from 'vue'
-import { Check, X, Clock, ShieldCheck, ArrowRight, Sparkles, ListPlus } from 'lucide-vue-next'
+import { ShieldCheck, ArrowRight, Sparkles, ListPlus, MessageCircle } from 'lucide-vue-next'
 import Badge from './ui/Badge.vue'
 import AppButton from './ui/AppButton.vue'
-import { useAgentStore } from '@/stores/agent'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useTasksStore } from '@/stores/tasks'
+import { useChatStore } from '@/stores/chat'
 import { idr } from '@/mock/util'
 
 const props = defineProps({
   rec: { type: Object, required: true },
   showProperty: { type: Boolean, default: false },
 })
-const agent = useAgentStore()
 const portfolio = usePortfolioStore()
 const tasks = useTasksStore()
+const chat = useChatStore()
 const property = computed(() => portfolio.byId(props.rec.propertyId))
 
 function pinToTask() {
   tasks.addFromRecommendation(props.rec, property.value?.name)
+}
+function askAI() {
+  chat.explainRecommendation(props.rec, property.value?.name)
 }
 
 const statusMap = {
@@ -83,31 +86,20 @@ const impactM = computed(() => (props.rec.estImpact / 1_000_000).toFixed(1))
     </div>
 
     <div v-if="!done" class="mt-auto flex items-center gap-2 pt-4">
-      <AppButton variant="success" size="sm" @click="agent.approve(rec.id)">
-        <Check class="h-3.5 w-3.5" /> Approve
-      </AppButton>
-      <AppButton variant="secondary" size="sm" @click="agent.reject(rec.id)">
-        <X class="h-3.5 w-3.5" /> Reject
-      </AppButton>
-      <AppButton variant="secondary" size="sm" @click="agent.snooze(rec.id)">
-        <Clock class="h-3.5 w-3.5" /> Snooze
+      <AppButton variant="primary" size="sm" title="Add as a manual follow-up task" @click="pinToTask">
+        <ListPlus class="h-3.5 w-3.5" /> Add to task
       </AppButton>
       <AppButton
         variant="secondary"
         size="sm"
-        class="ml-auto border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
-        title="Add as a manual follow-up task"
-        @click="pinToTask"
+        title="Ask the AI to explain this recommendation"
+        @click="askAI"
       >
-        <ListPlus class="h-3.5 w-3.5" /> Add to task
+        <MessageCircle class="h-3.5 w-3.5" /> Ask AI
       </AppButton>
     </div>
-    <div v-else-if="rec.status === 'snoozed'" class="mt-auto flex items-center gap-2 pt-3">
-      <span class="text-xs text-slate-400">Snoozed until tomorrow</span>
-      <AppButton variant="secondary" size="sm" class="ml-auto" @click="agent.unsnooze(rec.id)">
-        <Clock class="h-3.5 w-3.5" /> Unsnooze
-      </AppButton>
-    </div>
-    <p v-else class="mt-auto pt-3 text-xs text-slate-400">{{ rec.applyLabel }}</p>
+    <p v-else class="mt-auto pt-3 text-xs text-slate-400">
+      {{ rec.status === 'tasked' ? 'Added to your tasks — handle it from Tasks & Activities.' : rec.applyLabel }}
+    </p>
   </div>
 </template>

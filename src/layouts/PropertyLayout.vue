@@ -1,12 +1,11 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
 import { ArrowLeft, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useTasksStore } from '@/stores/tasks'
 import { useMonitorStore } from '@/stores/monitor'
 import { propertyTypeLabel } from '@/mock/properties'
-import HealthRing from '@/components/ui/HealthRing.vue'
 import Badge from '@/components/ui/Badge.vue'
 
 const props = defineProps({ id: String })
@@ -29,13 +28,13 @@ const tasksOverdueCount = computed(() =>
 // Promotions & Upselling hidden for now (routes still exist).
 const tabs = [
   { key: 'overview', label: 'Overview' },
+  { key: 'agent', label: 'AI Recommendations' },
   { key: 'monitor', label: 'Monitoring' },
   { key: 'pricing', label: 'Pricing & Calendar' },
   { key: 'forecast', label: 'Demand & Forecast' },
   { key: 'compset', label: 'Compset' },
   { key: 'channels', label: 'Channels' },
   { key: 'social', label: 'Social Media' },
-  { key: 'agent', label: 'AI Recommendations' },
   { key: 'reports', label: 'Reports' },
 ]
 const base = computed(() => `/property/${props.id}`)
@@ -55,6 +54,33 @@ const reviewedToday = computed(() => portfolio.isReviewedToday(props.id))
 function toggleReviewed() {
   portfolio.setReviewed(props.id, !reviewedToday.value)
 }
+
+// Hero photo with graceful gradient + initials fallback. Reset on property switch.
+const imgFailed = ref(false)
+watch(() => props.id, () => { imgFailed.value = false })
+const initials = computed(() =>
+  (property.value?.name || '')
+    .split(' ')
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase(),
+)
+
+// Plain-language status (mirrors the property card), replacing the 0–99 ring.
+const status = computed(() => {
+  const p = property.value
+  if (!p) return 'ontrack'
+  if (p.alertCount > 0 || p.occupancy < 55 || p.paceDelta <= -10) return 'attention'
+  if (!reviewedToday.value) return 'review'
+  return 'ontrack'
+})
+const statusMeta = {
+  attention: { label: 'Needs attention', pill: 'bg-rose-50 text-rose-700' },
+  review: { label: 'Needs review', pill: 'bg-amber-50 text-amber-700' },
+  ontrack: { label: 'On track', pill: 'bg-emerald-50 text-emerald-700' },
+}
+const meta = computed(() => statusMeta[status.value])
 </script>
 
 <template>
@@ -78,10 +104,24 @@ function toggleReviewed() {
 
     <!-- Property header -->
     <div class="flex flex-wrap items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-      <HealthRing :score="property.healthScore" :size="52" />
+      <!-- Thumbnail — instant recognition without reading the name -->
+      <div class="relative h-14 w-20 shrink-0 overflow-hidden rounded-xl bg-slate-100">
+        <img
+          v-if="!imgFailed"
+          :src="property.image"
+          :alt="property.name"
+          class="h-full w-full object-cover"
+          @error="imgFailed = true"
+        />
+        <div v-else class="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-400 to-brand-700 text-base font-bold text-white/90">
+          {{ initials }}
+        </div>
+      </div>
+
       <div class="min-w-0 flex-1">
         <div class="flex flex-wrap items-center gap-2">
           <h1 class="text-lg font-bold text-slate-900">{{ property.name }}</h1>
+          <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="meta.pill">{{ meta.label }}</span>
           <Badge tone="brand" size="sm">{{ propertyTypeLabel[property.type] }}</Badge>
           <Badge tone="amber" size="sm"><Star class="h-3 w-3" />{{ property.rating }}</Badge>
           <Badge v-if="reviewedToday" tone="green" size="sm"><CheckCircle2 class="h-3 w-3" />Reviewed</Badge>
@@ -90,16 +130,14 @@ function toggleReviewed() {
           <MapPin class="h-3.5 w-3.5" />{{ property.city }} · {{ property.units }} units · Owner {{ property.ownerName }}
         </p>
       </div>
-      <div class="flex flex-col items-end gap-2">
-        <button
-          class="pressable inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors duration-150 ease-out"
-          :class="reviewedToday ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'"
-          @click="toggleReviewed"
-        >
-          <component :is="reviewedToday ? CheckCircle2 : Circle" class="h-3.5 w-3.5" />
-          {{ reviewedToday ? 'Reviewed today' : 'Mark reviewed' }}
-        </button>
-      </div>
+      <button
+        class="pressable inline-flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-medium transition-colors duration-150 ease-out"
+        :class="reviewedToday ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'"
+        @click="toggleReviewed"
+      >
+        <component :is="reviewedToday ? CheckCircle2 : Circle" class="h-3.5 w-3.5" />
+        {{ reviewedToday ? 'Reviewed today' : 'Mark reviewed' }}
+      </button>
     </div>
 
     <!-- Tabs -->

@@ -29,7 +29,7 @@ const propName = (id) => portfolio.byId(id)?.name
     <div class="flex flex-wrap items-center justify-between gap-3">
       <div>
         <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900"><Bot class="h-5 w-5 text-brand-600" /> AI Recommendations</h1>
-        <p class="text-sm text-slate-500">{{ agent.pending.length }} pending · est. {{ idr(agent.estPipeline, { compact: true }) }}/wk impact — every action needs your approval</p>
+        <p class="text-sm text-slate-500">{{ agent.pending.length }} pending · est. {{ idr(agent.estPipeline, { compact: true }) }}/wk impact — add the ones you want to your tasks and apply them yourself</p>
       </div>
     </div>
 
@@ -51,7 +51,7 @@ const propName = (id) => portfolio.byId(id)?.name
     <div v-if="tab === 'inbox'" class="mt-5">
       <div class="mb-3 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 text-xs w-fit">
         <button
-          v-for="f in [['all','All'],['approval','Needs review'],['auto','Low risk'],['snoozed','Snoozed']]"
+          v-for="f in [['all','All'],['approval','Needs review'],['auto','Low risk']]"
           :key="f[0]"
           class="pressable rounded-lg px-3 py-1.5 font-medium transition-colors duration-150 ease-out"
           :class="filter === f[0] ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:text-slate-700'"

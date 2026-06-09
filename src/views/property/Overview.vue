@@ -4,12 +4,13 @@ import { useRoute } from 'vue-router'
 import dayjs from 'dayjs'
 import {
   Bell, Check, ListTodo, AlertTriangle, Plus, CheckCircle2,
-  ChevronDown, ChevronUp, ListPlus, Sparkles, Zap, ShieldCheck,
+  ChevronDown, ChevronUp, ListPlus, Sparkles, ShieldCheck, MessageCircle,
 } from 'lucide-vue-next'
 import { useAgentStore } from '@/stores/agent'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useTasksStore } from '@/stores/tasks'
 import { useUiStore } from '@/stores/ui'
+import { useChatStore } from '@/stores/chat'
 import StatCard from '@/components/ui/StatCard.vue'
 import Card from '@/components/ui/Card.vue'
 import AppButton from '@/components/ui/AppButton.vue'
@@ -25,6 +26,7 @@ const agent = useAgentStore()
 const portfolio = usePortfolioStore()
 const tasksStore = useTasksStore()
 const ui = useUiStore()
+const chat = useChatStore()
 
 // ── Recommendations (right rail, compact) ───────────────────────────
 const pending = computed(() =>
@@ -34,9 +36,8 @@ const alerts = computed(() =>
   portfolio.alerts.filter((a) => a.propertyId === props.property.id && !a.resolved),
 )
 
-function approveRec(rec) {
-  agent.approve(rec.id)
-  ui.toast('Recommendation approved')
+function askAI(rec) {
+  chat.explainRecommendation(rec, props.property?.name)
 }
 function recToTask(rec) {
   tasksStore.addFromRecommendation(rec)
@@ -240,9 +241,9 @@ watch(() => route.query.focus, applyFocus, { immediate: true })
             class="rounded-xl border border-slate-200 p-3 transition-colors duration-150 hover:border-brand-200"
           >
             <div class="flex items-start justify-between gap-2">
-              <Badge :tone="rec.risk === 'auto' ? 'brand' : 'amber'" size="sm">
-                <component :is="rec.risk === 'auto' ? Zap : ShieldCheck" class="h-3 w-3" />
-                {{ rec.risk === 'auto' ? 'Auto' : 'Approve' }}
+              <Badge :tone="rec.risk === 'auto' ? 'green' : 'amber'" size="sm">
+                <ShieldCheck class="h-3 w-3" />
+                {{ rec.risk === 'auto' ? 'Low risk' : 'Needs review' }}
               </Badge>
               <span class="shrink-0 text-xs font-bold text-emerald-600">
                 +{{ (rec.estImpact / 1_000_000).toFixed(1) }}M<span class="font-medium text-slate-400">/wk</span>
@@ -253,17 +254,16 @@ watch(() => route.query.focus, applyFocus, { immediate: true })
               <Sparkles class="mt-0.5 h-3 w-3 shrink-0 text-brand-400" />{{ rec.drivers[0] }}
             </p>
             <div class="mt-3 flex items-center gap-2">
-              <AppButton variant="success" size="sm" class="flex-1" @click="approveRec(rec)">
-                <Check class="h-3.5 w-3.5" /> Approve
+              <AppButton variant="primary" size="sm" class="flex-1" title="Add as a manual follow-up task" @click="recToTask(rec)">
+                <ListPlus class="h-3.5 w-3.5" /> Add to task
               </AppButton>
               <AppButton
                 variant="secondary"
                 size="sm"
-                class="border-brand-200 bg-brand-50 text-brand-700 hover:bg-brand-100"
-                title="Add as a follow-up task"
-                @click="recToTask(rec)"
+                title="Ask the AI to explain this recommendation"
+                @click="askAI(rec)"
               >
-                <ListPlus class="h-3.5 w-3.5" /> Task
+                <MessageCircle class="h-3.5 w-3.5" /> Ask AI
               </AppButton>
             </div>
           </div>

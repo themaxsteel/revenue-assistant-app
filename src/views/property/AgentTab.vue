@@ -54,7 +54,7 @@ watch(() => route.query.focus, applyFocus, { immediate: true })
       <Card title="How this works" padding="p-5">
         <p class="text-xs leading-relaxed text-slate-500">
           The Revenue Assistant reviews this property and prepares recommendations with the reasoning behind each one.
-          <strong class="text-slate-600">Nothing is applied automatically</strong> — you approve, reject, or snooze every action.
+          <strong class="text-slate-600">Nothing is applied automatically</strong> — add the ones you want to your tasks and make the change yourself. Tap “Ask AI” on any card for a step-by-step how-to.
         </p>
       </Card>
 
