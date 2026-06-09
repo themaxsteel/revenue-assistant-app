@@ -2,8 +2,10 @@ import { defineStore } from 'pinia'
 import dayjs from 'dayjs'
 import { seedTasks, seedActivities } from '@/mock/tasks'
 import { useAgentStore } from './agent'
+import { usePortfolioStore } from './portfolio'
 import { useUiStore } from './ui'
 import { idr } from '@/mock/util'
+import { howToSteps } from '@/mock/recoSteps'
 
 let taskCounter = 100
 let actCounter = 100
@@ -50,12 +52,13 @@ export const useTasksStore = defineStore('tasks', {
     },
   },
   actions: {
-    addTask({ title, propertyId = null, ownerName = null, priority = 'medium', dueAt = null, recurring = null, link = null, note = '' }) {
+    addTask({ title, propertyId = null, ownerName = null, priority = 'medium', dueAt = null, recurring = null, link = null, note = '', steps = null }) {
       if (!title?.trim()) return
       this.tasks.unshift({
         id: `task-${++taskCounter}`,
         title: title.trim(),
         note,
+        steps, // optional "how to do it" checklist (from an AI recommendation)
         propertyId,
         ownerName,
         link,
@@ -146,6 +149,7 @@ export const useTasksStore = defineStore('tasks', {
         rec.type?.includes('rate') && rec.recommendedRate
           ? `Set the nightly rate to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%).`
           : rec.applyLabel || rec.drivers?.[0] || ''
+      const where = usePortfolioStore().byId(rec.propertyId)?.name || 'this property'
       this.addTask({
         title: `Apply: ${rec.title}`,
         propertyId: rec.propertyId,
@@ -153,6 +157,7 @@ export const useTasksStore = defineStore('tasks', {
         dueAt: dayjs().add(1, 'day').toISOString(),
         link: { type: 'recommendation', id: rec.id, label: 'AI recommendation' },
         note: [instruction, rec.drivers?.[0]].filter(Boolean).join(' ').trim(),
+        steps: howToSteps(rec, where),
       })
       // Pinned recommendations leave the AI inbox — the RA owns it now.
       useAgentStore().markTasked(rec.id)

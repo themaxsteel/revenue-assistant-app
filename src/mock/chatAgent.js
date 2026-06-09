@@ -10,6 +10,7 @@ import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
 import { idr } from './util'
+import { howToSteps } from './recoSteps'
 
 const has = (msg, words) => words.some((w) => msg.includes(w))
 
@@ -166,61 +167,58 @@ export function respondToChat(rawMessage, ctx = {}) {
   }
 }
 
-// Step-by-step "how to do it yourself" per recommendation type. Nothing is
-// applied automatically — the RA performs the change manually.
-function howToSteps(rec, where) {
-  if (rec.type?.includes('rate')) {
-    return [
-      `Open the “Pricing & Calendar” tab for ${where}.`,
-      `Set the nightly rate to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}% vs the current ${idr(rec.currentRate)}).`,
-      `Save the change, then mark your task as done.`,
-    ]
+// Draft a professional reply to a guest review for the RA to post manually.
+// Returns { draft, tips: string[], note }.
+export function draftReviewReply(review, propName) {
+  const place = propName || 'our property'
+  const theme = (review.themes && review.themes[0]) || null
+  let draft
+  if (review.sentiment === 'negative') {
+    draft =
+      `Dear ${review.author}, thank you for your feedback and we're sorry your stay fell short` +
+      `${theme ? ` — especially around ${theme.toLowerCase()}` : ''}. ` +
+      `We've shared this with the team at ${place} and are already addressing it. ` +
+      `We'd love the chance to host you again and make it right.`
+  } else if (review.sentiment === 'neutral') {
+    draft =
+      `Hi ${review.author}, thank you for taking the time to review ${place}. ` +
+      `We're glad you enjoyed your stay and we're always working to improve` +
+      `${theme ? `, including ${theme.toLowerCase()}` : ''}. We hope to welcome you back soon.`
+  } else {
+    draft =
+      `Hi ${review.author}, thank you so much for the kind words about ${place}! ` +
+      `${theme ? `We're thrilled the ${theme.toLowerCase()} stood out. ` : ''}` +
+      `It would be a pleasure to host you again on your next trip.`
   }
-  if (rec.type === 'parity_sync') {
-    return [
-      `Open the “Channels” tab for ${where}.`,
-      `Find the OTA flagged out of parity and re-sync its rate.`,
-      `Confirm it shows “in parity”, then mark your task as done.`,
-    ]
+  return {
+    draft,
+    tips: [
+      'Keep it warm, specific, and under ~4 sentences.',
+      review.sentiment === 'negative'
+        ? 'Acknowledge the issue and state the fix — never argue publicly.'
+        : 'Mention a detail from their review so it feels personal.',
+      'Reply promptly — OTAs reward fast, consistent responses.',
+    ],
+    note: 'Copy this, tweak it in your own voice, and post it on the OTA — then mark the review as replied.',
   }
-  if (rec.type === 'ota_open') {
-    return [
-      `Open the “Channels” tab for ${where}.`,
-      `Reopen the closed OTA inventory for the affected dates.`,
-      `Mark your task as done.`,
-    ]
-  }
-  if (rec.type === 'min_stay') {
-    return [
-      `Open the “Pricing & Calendar” tab for ${where}.`,
-      `Apply the minimum-stay on the peak dates noted.`,
-      `Mark your task as done.`,
-    ]
-  }
-  return [
-    `Open the relevant tab for ${where}.`,
-    rec.applyLabel || 'Apply the change described above.',
-    `Mark your task as done.`,
-  ]
 }
 
-// Tailored, data-grounded explanation of a single recommendation (what / why /
-// how) for the chat widget. Side-effect free.
+// Tailored, data-grounded explanation of a single recommendation, returned as a
+// structured payload (what / why / how) the chat widget renders as a template.
+// Side-effect free.
 export function explainRecommendation(rec, propName) {
   const where = propName || 'this property'
-  const lines = [`Here's the breakdown for “${rec.title}”${propName ? ` at ${propName}` : ''}:`, '', 'WHAT']
-  if (rec.type?.includes('rate')) {
-    lines.push(`Change the nightly rate from ${idr(rec.currentRate)} to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%).`)
-  } else {
-    lines.push(rec.applyLabel || rec.title)
+  const what =
+    rec.type?.includes('rate') && rec.recommendedRate
+      ? `Change the nightly rate from ${idr(rec.currentRate)} to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%).`
+      : rec.applyLabel || rec.title
+  return {
+    what,
+    why: (rec.drivers || []).slice(),
+    meta: rec.confidence
+      ? `Confidence ${rec.confidence}% · est. ${idr(rec.estImpact, { compact: true })}/wk impact`
+      : null,
+    how: howToSteps(rec, where),
+    note: "I don't apply anything automatically — add this to your tasks and make the change yourself.",
   }
-  lines.push('', 'WHY')
-  ;(rec.drivers || []).forEach((d) => lines.push(`• ${d}`))
-  if (rec.confidence) {
-    lines.push(`Confidence ${rec.confidence}% · est. ${idr(rec.estImpact, { compact: true })}/wk impact.`)
-  }
-  lines.push('', 'HOW TO DO IT')
-  howToSteps(rec, where).forEach((s, i) => lines.push(`${i + 1}. ${s}`))
-  lines.push('', "I don't apply anything automatically — add this to your tasks and make the change yourself.")
-  return { text: lines.join('\n') }
 }

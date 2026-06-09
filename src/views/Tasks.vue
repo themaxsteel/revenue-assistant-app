@@ -2,7 +2,7 @@
 import { ref, computed, reactive } from 'vue'
 import dayjs from 'dayjs'
 import {
-  ListTodo, Plus, Repeat, Bot, Hand, Sparkles, CalendarCheck, List, CalendarDays,
+  ListTodo, Plus, Bot, Hand, CalendarCheck, List, CalendarDays,
 } from 'lucide-vue-next'
 import { useTasksStore } from '@/stores/tasks'
 import { usePortfolioStore } from '@/stores/portfolio'
@@ -23,10 +23,19 @@ const tab = ref('tasks')
 const taskView = ref('list') // list | calendar
 const filter = ref('all') // all | overdue | today | done
 
-// Quick-add form
+// Add-task form (in a modal so the list stays focused on doing the work).
+const addOpen = ref(false)
 const form = reactive({ title: '', propertyId: '', priority: 'medium', due: 'none', recurring: '' })
 const dueOptions = { none: null, today: () => dayjs().toISOString(), tomorrow: () => dayjs().add(1, 'day').toISOString(), week: () => dayjs().add(7, 'day').toISOString() }
 
+function openAdd() {
+  form.title = ''
+  form.propertyId = ''
+  form.priority = 'medium'
+  form.due = 'none'
+  form.recurring = ''
+  addOpen.value = true
+}
 function applyTemplate(t) {
   form.title = t.label
   form.priority = t.priority
@@ -43,9 +52,7 @@ function add() {
     dueAt: dueOptions[form.due] ? dueOptions[form.due]() : null,
     recurring: form.recurring || null,
   })
-  form.title = ''
-  form.due = 'none'
-  form.recurring = ''
+  addOpen.value = false
 }
 
 // Filtered + grouped open tasks
@@ -90,7 +97,6 @@ function saveOutcome() {
 const activityKind = ref('all') // all | manual | ai
 const activityLimit = ref(25)
 const activities = computed(() => tasks.activities)
-const totalImpact = computed(() => activities.value.reduce((s, a) => s + (a.impact || 0), 0))
 
 const filteredActivities = computed(() =>
   activities.value.filter((a) => activityKind.value === 'all' || a.kind === activityKind.value),
@@ -136,69 +142,26 @@ const groupedActivities = computed(() => {
 
     <!-- TASKS TAB -->
     <div v-if="tab === 'tasks'">
-      <div class="mt-4 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 text-xs w-fit">
-        <button
-          v-for="v in [['list','List', List],['calendar','Calendar', CalendarDays]]"
-          :key="v[0]"
-          class="pressable inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors duration-150 ease-out"
-          :class="taskView === v[0] ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:text-slate-700'"
-          @click="taskView = v[0]"
-        >
-          <component :is="v[2]" class="h-3.5 w-3.5" /> {{ v[1] }}
-        </button>
+      <div class="mt-4 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 text-xs w-fit">
+          <button
+            v-for="v in [['list','List', List],['calendar','Calendar', CalendarDays]]"
+            :key="v[0]"
+            class="pressable inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors duration-150 ease-out"
+            :class="taskView === v[0] ? 'bg-brand-50 text-brand-700' : 'text-slate-500 hover:text-slate-700'"
+            @click="taskView = v[0]"
+          >
+            <component :is="v[2]" class="h-3.5 w-3.5" /> {{ v[1] }}
+          </button>
+        </div>
+        <AppButton variant="primary" size="sm" @click="openAdd"><Plus class="h-4 w-4" /> Add task</AppButton>
       </div>
 
       <TaskCalendar v-if="taskView === 'calendar'" class="mt-4" @add-outcome="openOutcome" @open="openDetail" />
     </div>
 
-    <div v-if="tab === 'tasks' && taskView === 'list'" class="mt-4 grid gap-5 lg:grid-cols-[1fr_300px]">
+    <div v-if="tab === 'tasks' && taskView === 'list'" class="mt-4">
       <div class="space-y-4">
-        <!-- Quick add -->
-        <Card padding="p-4">
-          <div class="flex flex-wrap items-center gap-2">
-            <input
-              v-model="form.title"
-              type="text"
-              placeholder="Add a task… (e.g. Call owner of Villa A)"
-              class="min-w-[200px] flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
-              @keyup.enter="add"
-            />
-            <select v-model="form.propertyId" class="rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
-              <option value="">No property</option>
-              <option v-for="p in portfolio.properties" :key="p.id" :value="p.id">{{ p.name }}</option>
-            </select>
-            <select v-model="form.priority" class="rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <select v-model="form.due" class="rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
-              <option value="none">No date</option>
-              <option value="today">Today</option>
-              <option value="tomorrow">Tomorrow</option>
-              <option value="week">This week</option>
-            </select>
-            <button
-              class="pressable rounded-xl border px-2.5 py-2 text-sm font-medium transition-colors duration-150 ease-out"
-              :class="form.recurring ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500'"
-              :title="form.recurring ? 'Recurring: ' + form.recurring : 'Make recurring'"
-              @click="form.recurring = form.recurring === 'weekly' ? '' : form.recurring === 'daily' ? 'weekly' : 'daily'"
-            >
-              <Repeat class="inline h-4 w-4" /> {{ form.recurring || 'once' }}
-            </button>
-            <AppButton variant="primary" size="md" @click="add"><Plus class="h-4 w-4" /> Add</AppButton>
-          </div>
-          <div class="mt-3 flex flex-wrap items-center gap-1.5">
-            <span class="text-xs text-slate-400">Templates:</span>
-            <button
-              v-for="t in TASK_TEMPLATES"
-              :key="t.label"
-              class="pressable rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors duration-150 ease-out hover:border-brand-300 hover:text-brand-700"
-              @click="applyTemplate(t)"
-            >{{ t.label }}</button>
-          </div>
-        </Card>
-
         <!-- Filter chips + bulk reschedule -->
         <div class="flex flex-wrap items-center gap-2">
           <div class="flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-0.5 text-xs">
@@ -260,29 +223,6 @@ const groupedActivities = computed(() => {
           <p v-if="!visible.length" class="py-12 text-center text-sm text-slate-400">Nothing here.</p>
         </div>
       </div>
-
-      <!-- Side summary -->
-      <div class="space-y-4">
-        <Card title="Overview" padding="p-5">
-          <dl class="space-y-2.5 text-sm">
-            <div class="flex justify-between"><dt class="text-slate-500">Open</dt><dd class="font-semibold text-slate-800">{{ tasks.open.length }}</dd></div>
-            <div class="flex justify-between"><dt class="text-rose-500">Overdue</dt><dd class="font-semibold text-rose-600">{{ tasks.overdue.length }}</dd></div>
-            <div class="flex justify-between"><dt class="text-amber-600">Due today</dt><dd class="font-semibold text-amber-700">{{ tasks.dueToday.length }}</dd></div>
-            <div class="flex justify-between"><dt class="text-slate-500">Completed</dt><dd class="font-semibold text-slate-800">{{ tasks.done.length }}</dd></div>
-            <div class="flex justify-between border-t border-slate-100 pt-2.5"><dt class="flex items-center gap-1 text-slate-500"><Repeat class="h-3.5 w-3.5" />Routines kept</dt><dd class="font-semibold text-emerald-600">{{ tasks.routinesKept }}</dd></div>
-          </dl>
-        </Card>
-        <Card padding="p-5">
-          <div class="flex items-center gap-2.5">
-            <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600"><Sparkles class="h-5 w-5" /></div>
-            <div>
-              <p class="text-xs text-slate-500">Logged impact</p>
-              <p class="text-lg font-bold text-emerald-600">+{{ idr(totalImpact, { compact: true }) }}</p>
-            </div>
-          </div>
-          <p class="mt-2 text-xs text-slate-400">Revenue attributed to your manual + AI actions in the activity log.</p>
-        </Card>
-      </div>
     </div>
 
     <!-- ACTIVITY TAB -->
@@ -329,6 +269,69 @@ const groupedActivities = computed(() => {
         <p v-if="!filteredActivities.length" class="py-8 text-center text-sm text-slate-400">No activity yet.</p>
       </Card>
     </div>
+
+    <!-- Add task -->
+    <Modal :open="addOpen" title="Add task" @close="addOpen = false">
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs font-medium text-slate-500">Task</label>
+          <input
+            v-model="form.title"
+            type="text"
+            placeholder="e.g. Call owner of Villa A"
+            class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            @keyup.enter="add"
+          />
+          <div class="mt-2 flex flex-wrap items-center gap-1.5">
+            <span class="text-xs text-slate-400">Templates:</span>
+            <button
+              v-for="t in TASK_TEMPLATES"
+              :key="t.label"
+              class="pressable rounded-full border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 transition-colors duration-150 ease-out hover:border-brand-300 hover:text-brand-700"
+              @click="applyTemplate(t)"
+            >{{ t.label }}</button>
+          </div>
+        </div>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label class="text-xs font-medium text-slate-500">Property</label>
+            <select v-model="form.propertyId" class="mt-1 w-full rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
+              <option value="">No property</option>
+              <option v-for="p in portfolio.properties" :key="p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-500">Priority</label>
+            <select v-model="form.priority" class="mt-1 w-full rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-500">Due</label>
+            <select v-model="form.due" class="mt-1 w-full rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
+              <option value="none">No date</option>
+              <option value="today">Today</option>
+              <option value="tomorrow">Tomorrow</option>
+              <option value="week">This week</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-xs font-medium text-slate-500">Recurring</label>
+            <select v-model="form.recurring" class="mt-1 w-full rounded-xl border border-slate-200 px-2.5 py-2 text-sm text-slate-600 focus:outline-none">
+              <option value="">One-off</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <AppButton variant="ghost" size="sm" @click="addOpen = false">Cancel</AppButton>
+        <AppButton variant="primary" size="sm" :disabled="!form.title.trim()" @click="add"><Plus class="h-4 w-4" /> Add task</AppButton>
+      </template>
+    </Modal>
 
     <!-- Task detail / edit -->
     <TaskDetailModal :open="detail.open" :task="detail.task" @close="detail.open = false" />

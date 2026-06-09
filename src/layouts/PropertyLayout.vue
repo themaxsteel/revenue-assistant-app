@@ -5,6 +5,7 @@ import { ArrowLeft, MapPin, Star, ChevronLeft, ChevronRight, CheckCircle2, Circl
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useTasksStore } from '@/stores/tasks'
 import { useMonitorStore } from '@/stores/monitor'
+import { useReputationStore } from '@/stores/reputation'
 import { propertyTypeLabel } from '@/mock/properties'
 import Badge from '@/components/ui/Badge.vue'
 
@@ -14,9 +15,11 @@ const router = useRouter()
 const portfolio = usePortfolioStore()
 const tasksStore = useTasksStore()
 const monitorStore = useMonitorStore()
+const reputationStore = useReputationStore()
 const property = computed(() => portfolio.byId(props.id))
 
 const monitorDecisionCount = computed(() => monitorStore.needsDecisionForProperty(props.id).length)
+const reputationReplyCount = computed(() => reputationStore.needsReplyForProperty(props.id).length)
 
 const tasksOpenCount = computed(() =>
   tasksStore.forProperty(props.id).filter((t) => t.status === 'todo').length,
@@ -35,6 +38,7 @@ const tabs = [
   { key: 'compset', label: 'Compset' },
   { key: 'channels', label: 'Channels' },
   { key: 'social', label: 'Social Media' },
+  { key: 'reputation', label: 'Reputation' },
   { key: 'reports', label: 'Reports' },
 ]
 const base = computed(() => `/property/${props.id}`)
@@ -160,6 +164,10 @@ const meta = computed(() => statusMeta[status.value])
             v-if="tab.key === 'monitor' && monitorDecisionCount > 0"
             class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-amber-700"
           >{{ monitorDecisionCount }}</span>
+          <span
+            v-if="tab.key === 'reputation' && reputationReplyCount > 0"
+            class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold leading-none text-amber-700"
+          >{{ reputationReplyCount }}</span>
         </span>
         <span
           v-if="route.path === `${base}/${tab.key}`"

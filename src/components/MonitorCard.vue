@@ -8,8 +8,7 @@ import { useTasksStore } from '@/stores/tasks'
 import { deriveMonitor, VERDICT_META, DECISION_META } from '@/mock/trackedActions'
 import Badge from '@/components/ui/Badge.vue'
 import AppButton from '@/components/ui/AppButton.vue'
-import ProgressBar from '@/components/ui/ProgressBar.vue'
-import Sparkline from '@/components/ui/Sparkline.vue'
+import RingProgress from '@/components/ui/RingProgress.vue'
 import Modal from '@/components/ui/Modal.vue'
 import { idr } from '@/mock/util'
 
@@ -30,6 +29,8 @@ const decision = computed(() => (props.action.decision ? DECISION_META[props.act
 const paceTone = computed(() =>
   ({ exceeded: 'green', on_track: 'brand', at_risk: 'amber' }[d.value.paceState] || 'slate'),
 )
+const PACE_COLOR = { green: '#10b981', brand: '#8c52ff', amber: '#f59e0b', slate: '#94a3b8' }
+const paceColor = computed(() => PACE_COLOR[paceTone.value] || PACE_COLOR.brand)
 const netTone = computed(() => (d.value.netUplift >= 0 ? 'text-emerald-600' : 'text-rose-600'))
 
 // Plain-language pill classes for the headline verdict.
@@ -163,17 +164,6 @@ function ptsStr(v) {
     </div>
 
     <template v-else>
-      <!-- Window progress -->
-      <div class="mt-4">
-        <div class="flex items-center gap-2 text-xs text-slate-500">
-          <CalendarClock class="h-3.5 w-3.5 text-slate-400" />
-          <span class="font-medium text-slate-600">Day {{ d.dayOf }} of {{ d.days }}</span>
-          <span class="text-slate-400">· {{ action.channel }} · ends {{ dayjs(action.endAt).format('DD MMM') }}</span>
-          <span class="ml-auto text-slate-400">{{ d.timeProgressPct }}% of window</span>
-        </div>
-        <ProgressBar :value="d.timeProgressPct" tone="slate" height="h-1.5" class="mt-1.5" />
-      </div>
-
       <!-- Metric grid: baseline → current -->
       <div class="mt-4 grid grid-cols-3 gap-2">
         <div class="rounded-xl bg-slate-50 p-3">
@@ -206,28 +196,28 @@ function ptsStr(v) {
         </div>
       </div>
 
-      <!-- Pace toward target -->
+      <!-- Progress: time window + target, as rings -->
       <div class="mt-4">
-        <div class="flex items-center justify-between text-xs">
-          <span class="font-medium text-slate-600">Target: {{ action.target.label }}</span>
-          <Badge :tone="paceTone" size="sm">{{ d.pacePct }}% to goal</Badge>
+        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-400">Progress</p>
+        <div class="flex items-start justify-around gap-4 rounded-xl bg-slate-50 p-4">
+          <div class="flex flex-col items-center text-center">
+            <RingProgress :value="d.timeProgressPct" color="#94a3b8">
+              <div>
+                <p class="text-[10px] font-medium text-slate-400">Day</p>
+                <p class="text-sm font-bold leading-none text-slate-800">{{ d.dayOf }}/{{ d.days }}</p>
+              </div>
+            </RingProgress>
+            <p class="mt-2 text-xs font-medium text-slate-600">Time</p>
+            <p class="text-[11px] text-slate-400">ends {{ dayjs(action.endAt).format('DD MMM') }}</p>
+          </div>
+          <div class="flex flex-col items-center text-center">
+            <RingProgress :value="d.pacePct" :color="paceColor">
+              <p class="text-base font-bold text-slate-800">{{ d.pacePct }}%</p>
+            </RingProgress>
+            <p class="mt-2 text-xs font-medium text-slate-600">Target</p>
+            <p class="text-[11px] text-slate-400">{{ action.target.label }}</p>
+          </div>
         </div>
-        <ProgressBar :value="d.pacePct" :tone="paceTone" height="h-1.5" class="mt-1.5" />
-      </div>
-
-      <!-- RevPAR trend + discount cost -->
-      <div class="mt-4 flex items-center gap-3">
-        <Sparkline
-          v-if="d.revparSeries.length > 1"
-          :data="d.revparSeries"
-          :tone="d.revparDeltaPct >= 0 ? 'green' : 'red'"
-          :width="160"
-          :height="40"
-        />
-        <p v-if="action.discountPct" class="text-[11px] text-slate-400">
-          Discount given away so far:
-          <span class="font-medium text-slate-500">{{ idr(d.discountCost, { compact: true }) }}</span>
-        </p>
       </div>
     </template>
 

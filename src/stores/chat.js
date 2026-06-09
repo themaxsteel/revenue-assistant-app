@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
-import { respondToChat, explainRecommendation } from '@/mock/chatAgent'
+import { respondToChat, explainRecommendation, draftReviewReply } from '@/mock/chatAgent'
 import { useTasksStore } from './tasks'
+import { idr } from '@/mock/util'
 
 let mid = 0
 
@@ -58,17 +59,56 @@ export const useChatStore = defineStore('chat', {
     explainRecommendation(rec, propName = null) {
       this.open = true
       this.unread = 0
-      this.messages.push({ id: ++mid, role: 'user', text: `Explain this recommendation: “${rec.title}”` })
+      // Compact reference card carried into the chat alongside the question.
+      const recRef = {
+        title: rec.title,
+        propertyName: propName,
+        riskLabel: rec.risk === 'auto' ? 'Low risk' : 'Needs review',
+        rateText:
+          rec.type?.includes('rate') && rec.recommendedRate
+            ? `${idr(rec.currentRate, { compact: true })} → ${idr(rec.recommendedRate, { compact: true })} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%)`
+            : null,
+      }
+      this.messages.push({ id: ++mid, role: 'user', text: 'Explain this recommendation', rec: recRef })
       this.typing = true
       setTimeout(() => {
-        const res = explainRecommendation(rec, propName)
         this.messages.push({
           id: ++mid,
           role: 'assistant',
-          text: res.text,
-          suggestions: ['How do I add this to my tasks?', 'Which properties need attention?'],
+          explain: explainRecommendation(rec, propName),
+          recObj: rec, // carried so the "Add to task" button can act
+          suggestions: ['Which properties need attention?', 'Give me a portfolio summary'],
         })
         this.typing = false
+        if (!this.open) this.unread += 1
+      }, 700)
+    },
+    // Open the drawer and draft a reply to a guest review — triggered by the
+    // "Ask AI to draft a reply" button on a review card.
+    askReviewReply(review, propName = null) {
+      this.open = true
+      this.unread = 0
+      const reviewRef = {
+        source: review.source,
+        sourceName: review.sourceName,
+        author: review.author,
+        rating: review.rating,
+        scale: review.scale,
+        sentiment: review.sentiment,
+        text: review.text,
+        propertyName: propName,
+      }
+      this.messages.push({ id: ++mid, role: 'user', text: 'Help me reply to this review', reviewRef })
+      this.typing = true
+      setTimeout(() => {
+        this.messages.push({
+          id: ++mid,
+          role: 'assistant',
+          reply: draftReviewReply(review, propName),
+          suggestions: ['Which properties need attention?', 'Give me a portfolio summary'],
+        })
+        this.typing = false
+        if (!this.open) this.unread += 1
       }, 700)
     },
     reset() {

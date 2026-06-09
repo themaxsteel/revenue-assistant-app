@@ -6,6 +6,7 @@ import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
 import { useMonitorStore } from '@/stores/monitor'
+import { useReputationStore } from '@/stores/reputation'
 import { useUiStore } from '@/stores/ui'
 import { useChatStore } from '@/stores/chat'
 import Badge from '@/components/ui/Badge.vue'
@@ -18,6 +19,7 @@ const portfolio = usePortfolioStore()
 const agent = useAgentStore()
 const tasks = useTasksStore()
 const monitor = useMonitorStore()
+const reputation = useReputationStore()
 const ui = useUiStore()
 const chat = useChatStore()
 const route = useRoute()
@@ -58,6 +60,13 @@ const nav = computed(() => [
   },
   { to: '/reports', label: 'Owner Reports', icon: 'reports', badge: null },
   { to: '/social', label: 'Social Media', icon: 'social', badge: null },
+  {
+    to: '/reputation',
+    label: 'Reputation',
+    icon: 'star',
+    badge: reputation.needsReply.length || null,
+    badgeTone: reputation.needsReply.length ? 'amber' : null,
+  },
   // Hidden for now (routes still exist): Analytics, Alerts, Settings
   // { to: '/analytics', label: 'Analytics', icon: 'analytics', badge: null },
   // { to: '/alerts', label: 'Alerts', icon: 'bell', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
