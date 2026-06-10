@@ -3,18 +3,22 @@ import dayjs from 'dayjs'
 import { recommendations as seedRecs } from '@/mock/recommendations'
 import { agentLogSeed } from '@/mock/agentLog'
 import { globalGuardrails } from '@/mock/guardrails'
+import { suggestionEventsSeed } from '@/mock/suggestionEvents'
 import { usePortfolioStore } from './portfolio'
 import { useUiStore } from './ui'
 import { useMonitorStore, MONITORABLE_TYPES } from './monitor'
 import { idr } from '@/mock/util'
 
 let logCounter = 1000
+let eventCounter = 2000
 
 export const useAgentStore = defineStore('agent', {
   state: () => ({
     recommendations: seedRecs.map((r) => ({ ...r })),
     log: agentLogSeed.map((a) => ({ ...a })),
     guardrails: { ...globalGuardrails },
+    // Suggestion lifecycle events — the adoption/acceptance data contract.
+    events: suggestionEventsSeed.map((e) => ({ ...e })),
   }),
   getters: {
     pending: (state) => state.recommendations.filter((r) => r.status === 'pending'),
@@ -27,8 +31,33 @@ export const useAgentStore = defineStore('agent', {
       state.recommendations
         .filter((r) => r.status === 'pending')
         .reduce((s, r) => s + r.estImpact, 0),
+    // Adoption: accepted (tasked/applied) over all decided (excludes snooze).
+    acceptanceStats: (state) => {
+      const accepted = state.events.filter((e) => e.type === 'tasked' || e.type === 'applied').length
+      const rejected = state.events.filter((e) => e.type === 'rejected').length
+      const decided = accepted + rejected
+      return { accepted, rejected, decided, rate: decided ? Math.round((accepted / decided) * 100) : 0 }
+    },
   },
   actions: {
+    // Append a suggestion lifecycle event (adoption tracking).
+    _recordEvent(rec, type, reason = null) {
+      this.events.unshift({
+        id: `evt-${++eventCounter}`,
+        recId: rec.id,
+        propertyId: rec.propertyId,
+        type,
+        reason,
+        at: dayjs().toISOString(),
+      })
+    },
+    // Record a 'viewed' once per recommendation (the acceptance denominator).
+    recordViewed(recId) {
+      const rec = this.recommendations.find((r) => r.id === recId)
+      if (!rec) return
+      if (this.events.some((e) => e.recId === recId && e.type === 'viewed')) return
+      this._recordEvent(rec, 'viewed')
+    },
     _logAction(rec, mode) {
       const portfolio = usePortfolioStore()
       const p = portfolio.byId(rec.propertyId)
@@ -51,15 +80,17 @@ export const useAgentStore = defineStore('agent', {
       const rec = this.recommendations.find((r) => r.id === recId)
       if (!rec || rec.status !== 'pending') return
       rec.status = 'approved'
+      this._recordEvent(rec, 'applied')
       this._logAction(rec, 'approved')
       // Windowed actions go straight into the Monitoring loop.
       if (MONITORABLE_TYPES.has(rec.type)) useMonitorStore().trackFromRecommendation(rec)
       useUiStore().toast(`Approved: ${rec.title}`)
     },
-    reject(recId) {
+    reject(recId, reason = null) {
       const rec = this.recommendations.find((r) => r.id === recId)
       if (!rec) return
       rec.status = 'rejected'
+      this._recordEvent(rec, 'rejected', reason)
       useUiStore().toast(`Rejected: ${rec.title}`, 'neutral')
     },
     snooze(recId) {
@@ -67,6 +98,7 @@ export const useAgentStore = defineStore('agent', {
       if (!rec) return
       rec.status = 'snoozed'
       rec.snoozedUntil = dayjs().add(1, 'day').toISOString()
+      this._recordEvent(rec, 'snoozed')
       useUiStore().toast('Snoozed until tomorrow — find it under “Snoozed”', 'neutral')
     },
     unsnooze(recId) {
@@ -81,6 +113,7 @@ export const useAgentStore = defineStore('agent', {
       const rec = this.recommendations.find((r) => r.id === recId)
       if (!rec || rec.status !== 'pending') return
       rec.status = 'tasked'
+      this._recordEvent(rec, 'tasked')
     },
     // Bring back any snoozed items whose time has elapsed (called on app load).
     resurfaceSnoozed() {

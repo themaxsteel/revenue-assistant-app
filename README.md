@@ -87,9 +87,9 @@ State is held in Pinia and **resets on reload** (no persistence).
 ## For the backend team — data contract
 
 The shapes the UI expects live in [`src/mock/`](src/mock). Each file is documented and stable
-(seeded RNG). Key entities: `Property`, `RateRecommendation`, `AgentAction` (audit), `Alert`,
-`WorklistItem`, `ForecastPoint`, `Channel`, `Promotion`, `UpsellItem`,
-`OwnerReport`, `Guardrail`, `User`. In production these are served by the existing systems
+(seeded RNG). Key entities: `Property`, `RateRecommendation`, `SuggestionEvent` (adoption
+tracking), `AgentAction` (audit), `Alert`, `WorklistItem`, `ForecastPoint`, `Channel`, `Promotion`,
+`UpsellItem`, `OwnerReport`, `Guardrail`, `User`. In production these are served by the existing systems
 (PMS, Dynamic Pricing, Compset, Forecasting, BI, Channel Manager, CRM, Upselling, etc.) — see
 the Integrations board in **Settings**.
 
