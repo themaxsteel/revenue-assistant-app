@@ -128,11 +128,10 @@ function resolveAlert(id) {
       <h2 class="mt-4 text-lg font-bold text-slate-900">You're all caught up 🎉</h2>
       <p class="mt-1 max-w-sm text-sm text-slate-500">
         No urgent items or pending decisions across your {{ portfolio.count }} properties. Nothing runs
-        automatically — check back later or review your forecast.
+        automatically — check back later or review your portfolio.
       </p>
       <div class="mt-4 flex gap-2">
-        <RouterLink to="/portfolio"><AppButton variant="secondary" size="sm">View portfolio</AppButton></RouterLink>
-        <RouterLink to="/analytics"><AppButton variant="primary" size="sm">Open analytics</AppButton></RouterLink>
+        <RouterLink to="/portfolio"><AppButton variant="primary" size="sm">View portfolio</AppButton></RouterLink>
       </div>
     </div>
   </div>

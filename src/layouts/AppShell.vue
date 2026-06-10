@@ -73,8 +73,7 @@ const nav = computed(() => [
     badgeTone: reputation.needsReply.length ? 'amber' : null,
   },
   { to: '/reports', label: 'Owner Reports', icon: 'reports', badge: null },
-  // Hidden for now (routes still exist): Analytics, Alerts, Settings
-  // { to: '/analytics', label: 'Analytics', icon: 'analytics', badge: null },
+  // Hidden for now (routes still exist): Alerts, Settings
   // { to: '/alerts', label: 'Alerts', icon: 'bell', badge: portfolio.unreadAlerts || null, badgeTone: portfolio.unreadAlerts ? 'red' : null },
   // { to: '/settings', label: 'Settings', icon: 'settings', badge: null },
 ])

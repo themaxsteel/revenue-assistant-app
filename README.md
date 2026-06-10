@@ -8,6 +8,39 @@ manage up to **20 small properties** (villas, guesthouses, boutique hotels — I
 This is a **front-end prototype with dummy data** — no backend, no real integrations. It exists to
 lock the UX and hand the backend team concrete screen flows + data shapes.
 
+## Product overview (PRD)
+
+**Problem.** A Revenue Assistant can only personally analyse and act on a handful of properties per
+day. Headcount scales linearly with portfolio size, so revenue quality slips as more properties are
+added.
+
+**Thesis.** Let **one RA comfortably run ~20 small properties** by having the AI do the analysis and
+*prepare ready-to-apply suggestions*. The RA reviews and applies — never the machine.
+
+**Primary user.** A **Revenue Assistant**, often a *novice* (not necessarily a revenue-management
+expert). The UI must guide the next action and always explain the "why". A secondary **Lead / Admin**
+persona oversees multiple RAs and sets portfolio-wide recommendation limits.
+
+**Goals & success metrics.**
+- **Capacity** — properties handled per RA (target ~20) without quality loss.
+- **Adoption** — share of AI suggestions the RA reviews and applies (acceptance rate).
+- **Revenue uplift** — RevPAR / occupancy gains from applied suggestions.
+
+**Scope.** Day-to-day **operations**: morning triage, suggestion review/apply, task & follow-up
+tracking, pricing & channel upkeep, reputation replies, owner reporting, and monitoring the outcome
+of applied actions.
+
+**Non-goals (out of scope).**
+- ❌ **No automatic execution** of revenue actions — the AI only prepares; the RA applies every change.
+- ❌ **Not an analytics / BI tool** — this is an *operational* app, not a data-exploration / dashboard product.
+- ❌ Not a PMS / channel manager / booking engine — it sits on top of those systems (see Integrations).
+
+> "Social Media Automation" (scheduling posts) is a separate, legitimate integration — **not** part of
+> the no-automation rule above.
+
+**Status.** A **clickable front-end prototype with seeded dummy data**. Its job is to lock the UX and
+give the backend team concrete screen flows + data shapes to model the database against.
+
 ## Run
 
 ```bash
@@ -37,9 +70,9 @@ Vue 3 (`<script setup>`) · Vite · Tailwind CSS v3 · Vue Router · Pinia · Ch
 - **Owner Reports** — pick a property + period → PDF-style preview → simulate WhatsApp send.
 - **Social Media** — monitor the automation engine (platform performance, per-property reach &
   engagement, automation queue with approvals, top posts).
-- **Analytics**, **Alerts**, **Settings** (recommendation limits, integrations, team).
-- **Property workspace** — Overview, Pricing & Calendar, Demand & Forecast, Compset, Channels,
-  Promotions, Upselling, AI Agent, Reports.
+- **Alerts**, **Settings** (recommendation limits, integrations, team).
+- **Property workspace** — Overview, Smart Suggestions, Monitoring, Pricing & Calendar,
+  Channels, Social Media, Reputation, Reports.
 
 ### Try the key flows
 
@@ -55,7 +88,7 @@ State is held in Pinia and **resets on reload** (no persistence).
 
 The shapes the UI expects live in [`src/mock/`](src/mock). Each file is documented and stable
 (seeded RNG). Key entities: `Property`, `RateRecommendation`, `AgentAction` (audit), `Alert`,
-`WorklistItem`, `ForecastPoint`, `CompsetRate`, `Channel`, `Promotion`, `UpsellItem`,
+`WorklistItem`, `ForecastPoint`, `Channel`, `Promotion`, `UpsellItem`,
 `OwnerReport`, `Guardrail`, `User`. In production these are served by the existing systems
 (PMS, Dynamic Pricing, Compset, Forecasting, BI, Channel Manager, CRM, Upselling, etc.) — see
 the Integrations board in **Settings**.

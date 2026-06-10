@@ -324,7 +324,7 @@ function fmtImpact(v) {
 }
 
 function openProperty(p) {
-  router.push(`/property/${p.id}/forecast`)
+  router.push(`/property/${p.id}/overview`)
 }
 // Cells with suggestions open the popover; otherwise jump to the property.
 function onCellClick(e, property, cell, column) {
@@ -626,7 +626,7 @@ function goToSmartSuggest() {
         </div>
 
         <p class="mt-2 text-[10px] text-slate-400">
-          {{ tip.suggestions.length ? 'Click for details' : 'Click to open property forecast' }}
+          {{ tip.suggestions.length ? 'Click for details' : 'Click to open property' }}
         </p>
       </div>
     </Transition>

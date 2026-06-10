@@ -34,8 +34,6 @@ const tabs = [
   { key: 'agent', label: 'Smart Suggestions' },
   { key: 'monitor', label: 'Monitoring' },
   { key: 'pricing', label: 'Pricing & Calendar' },
-  { key: 'forecast', label: 'Demand & Forecast' },
-  { key: 'compset', label: 'Compset' },
   { key: 'channels', label: 'Channels' },
   { key: 'social', label: 'Social Media' },
   { key: 'reputation', label: 'Reputation' },

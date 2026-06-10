@@ -1,8 +1,7 @@
 import { propertyById } from './properties'
 import { rng, range, intRange } from './util'
 
-// Channel / distribution mix per property. Drives Channels & Distribution tab
-// and the portfolio channel-contribution chart in Analytics.
+// Channel / distribution mix per property. Drives the property Channels tab.
 const CHANNELS = [
   'Direct',
   'Booking.com',
