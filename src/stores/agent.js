@@ -20,17 +20,6 @@ export const useAgentStore = defineStore('agent', {
     pending: (state) => state.recommendations.filter((r) => r.status === 'pending'),
     pendingApproval: (state) =>
       state.recommendations.filter((r) => r.status === 'pending' && r.risk === 'approval'),
-    // Auto-eligible excludes properties the RA has set to Manual — those are
-    // hands-off-automation, so bulk "Run all auto-eligible" must not touch them.
-    autoEligible() {
-      const portfolio = usePortfolioStore()
-      return this.recommendations.filter(
-        (r) =>
-          r.status === 'pending' &&
-          r.risk === 'auto' &&
-          portfolio.byId(r.propertyId)?.autonomyMode !== 'manual',
-      )
-    },
     snoozed: (state) => state.recommendations.filter((r) => r.status === 'snoozed'),
     forProperty: (state) => (id) => state.recommendations.filter((r) => r.propertyId === id),
     logForProperty: (state) => (id) => state.log.filter((a) => a.propertyId === id),
@@ -48,7 +37,7 @@ export const useAgentStore = defineStore('agent', {
         propertyId: rec.propertyId,
         timestamp: dayjs().toISOString(),
         mode,
-        byAgent: mode === 'auto',
+        byAgent: false,
         type: rec.type,
         summary: rec.applyLabel,
         before: rec.type.includes('rate') ? idr(rec.currentRate) : '—',
@@ -102,37 +91,6 @@ export const useAgentStore = defineStore('agent', {
           r.snoozedUntil = null
         }
       })
-    },
-    approveAllAuto() {
-      if (this.guardrails.killSwitch) {
-        useUiStore().toast('Kill-switch is ON — auto-execution disabled', 'danger')
-        return
-      }
-      const auto = this.autoEligible
-      auto.forEach((rec) => {
-        rec.status = 'auto-executed'
-        this._logAction(rec, 'auto')
-      })
-      useUiStore().toast(`${auto.length} auto-eligible actions executed`)
-    },
-    // When a property is switched to 'auto', execute its eligible recs.
-    runAutoForProperty(propertyId) {
-      if (this.guardrails.killSwitch) return
-      this.recommendations
-        .filter((r) => r.propertyId === propertyId && r.status === 'pending' && r.risk === 'auto')
-        .forEach((rec) => {
-          rec.status = 'auto-executed'
-          this._logAction(rec, 'auto')
-        })
-    },
-    toggleKillSwitch() {
-      this.guardrails.killSwitch = !this.guardrails.killSwitch
-      useUiStore().toast(
-        this.guardrails.killSwitch
-          ? 'Global kill-switch ON — AI Agent paused'
-          : 'Kill-switch OFF — AI Agent resumed',
-        this.guardrails.killSwitch ? 'danger' : 'success',
-      )
     },
   },
 })

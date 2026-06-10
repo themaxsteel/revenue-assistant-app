@@ -1,7 +1,7 @@
 import { properties } from './properties'
 
 // Team & roles. Two roles only: Revenue Assistant (owns a portfolio) and
-// Lead/Admin (oversees all RAs, sets global guardrails, kill-switch).
+// Lead/Admin (oversees all RAs, sets global recommendation limits).
 export const currentUser = {
   id: 'ra-01',
   name: 'Dewi Anjani',

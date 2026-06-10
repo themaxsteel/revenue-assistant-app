@@ -29,11 +29,6 @@ export const usePortfolioStore = defineStore('portfolio', {
     totalRevpar: (state) => state.properties.reduce((s, p) => s + p.revpar * p.units, 0),
     avgHealth: (state) =>
       Math.round(state.properties.reduce((s, p) => s + p.healthScore, 0) / state.properties.length),
-    modeCounts: (state) => ({
-      auto: state.properties.filter((p) => p.autonomyMode === 'auto').length,
-      suggest: state.properties.filter((p) => p.autonomyMode === 'suggest').length,
-      manual: state.properties.filter((p) => p.autonomyMode === 'manual').length,
-    }),
     unreadAlerts: (state) => state.alerts.filter((a) => !a.read && !a.resolved).length,
     openAlerts: (state) => state.alerts.filter((a) => !a.resolved),
     needsAttention: (state) =>
@@ -59,10 +54,6 @@ export const usePortfolioStore = defineStore('portfolio', {
     },
   },
   actions: {
-    setAutonomy(propertyId, mode) {
-      const p = this.byId(propertyId)
-      if (p) p.autonomyMode = mode
-    },
     markAlertsRead(propertyId) {
       this.alerts.forEach((a) => {
         if (!propertyId || a.propertyId === propertyId) a.read = true

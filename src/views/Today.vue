@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { AlertOctagon, Eye, Info, Sparkles, Zap, ArrowRight, CheckCircle2, PartyPopper } from 'lucide-vue-next'
+import { AlertOctagon, Eye, Info, Zap, ArrowRight, PartyPopper } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useWorklistStore } from '@/stores/worklist'
@@ -34,7 +34,7 @@ const sections = computed(() => [
   { key: 'fyi', label: 'FYI', icon: Info, tone: 'text-slate-400', items: groups.value.fyi },
 ])
 
-const autoCount = computed(() => agent.autoEligible.length)
+const pendingCount = computed(() => agent.pending.length)
 const pipeline = computed(() => idr(agent.estPipeline, { compact: true }))
 const actionable = computed(() => worklist.counts.actionable)
 const allClear = computed(() => actionable.value === 0)
@@ -81,9 +81,9 @@ function resolveAlert(id) {
         <p class="text-xs text-slate-400">actionable items today</p>
       </Card>
       <Card padding="p-4">
-        <p class="text-xs font-medium text-slate-500">Auto-eligible actions</p>
-        <p class="mt-1 text-2xl font-bold text-brand-600">{{ autoCount }}</p>
-        <p class="text-xs text-slate-400">ready to execute in guardrails</p>
+        <p class="text-xs font-medium text-slate-500">Pending suggestions</p>
+        <p class="mt-1 text-2xl font-bold text-brand-600">{{ pendingCount }}</p>
+        <p class="text-xs text-slate-400">waiting for your review</p>
       </Card>
       <Card padding="p-4">
         <p class="text-xs font-medium text-slate-500">Pending impact</p>
@@ -95,24 +95,6 @@ function resolveAlert(id) {
         <p class="mt-1 text-2xl font-bold text-slate-800">{{ portfolio.avgHealth }}</p>
         <p class="text-xs text-slate-400">avg · occ {{ portfolio.avgOccupancy }}%</p>
       </Card>
-    </div>
-
-    <!-- One-click batch (only when there's something to do) -->
-    <div v-if="autoCount" class="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border border-brand-100 bg-brand-50/60 p-4">
-      <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-white">
-        <Sparkles class="h-5 w-5" />
-      </div>
-      <div class="flex-1">
-        <p class="text-sm font-semibold text-slate-800">{{ autoCount }} low-risk actions are safe to auto-execute</p>
-        <p class="text-xs text-slate-500">Rate nudges, parity syncs and OTA reopens — within guardrails, skipping Manual-mode properties.</p>
-      </div>
-      <AppButton variant="primary" size="sm" @click="agent.approveAllAuto()">
-        <Zap class="h-4 w-4" /> Run all auto-eligible
-      </AppButton>
-    </div>
-    <div v-else class="mt-4 flex items-center gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
-      <CheckCircle2 class="h-5 w-5 text-emerald-500" />
-      <p class="text-sm font-medium text-slate-700">No auto-eligible actions waiting — automation is all caught up.</p>
     </div>
 
     <!-- Worklist groups OR inbox-zero -->
@@ -145,8 +127,8 @@ function resolveAlert(id) {
       </div>
       <h2 class="mt-4 text-lg font-bold text-slate-900">You're all caught up 🎉</h2>
       <p class="mt-1 max-w-sm text-sm text-slate-500">
-        No urgent items or pending decisions across your {{ portfolio.count }} properties. The AI Agent
-        is handling routine moves — check back later or review your forecast.
+        No urgent items or pending decisions across your {{ portfolio.count }} properties. Nothing runs
+        automatically — check back later or review your forecast.
       </p>
       <div class="mt-4 flex gap-2">
         <RouterLink to="/portfolio"><AppButton variant="secondary" size="sm">View portfolio</AppButton></RouterLink>

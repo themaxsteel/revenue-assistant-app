@@ -16,7 +16,8 @@ const ACTIONS = [
 let n = 0
 const log = []
 properties.forEach((p, i) => {
-  if (p.autonomyMode !== 'auto') return
+  // Seed a past-action history for roughly half the portfolio (deterministic).
+  if (i % 2 !== 0) return
   const rand = rng(70000 + i * 71)
   const count = intRange(rand, 1, 3)
   for (let k = 0; k < count; k++) {

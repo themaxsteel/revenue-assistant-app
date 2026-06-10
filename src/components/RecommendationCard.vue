@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { ShieldCheck, ArrowRight, Sparkles, ListPlus, MessageCircle } from 'lucide-vue-next'
+import { ShieldCheck, ArrowRight, Sparkles, ListPlus, MessageCircle, CalendarDays } from 'lucide-vue-next'
 import Badge from './ui/Badge.vue'
 import AppButton from './ui/AppButton.vue'
 import { usePortfolioStore } from '@/stores/portfolio'
@@ -30,7 +30,6 @@ const statusMap = {
   rejected: { tone: 'slate', label: 'Rejected' },
   snoozed: { tone: 'amber', label: 'Snoozed' },
   tasked: { tone: 'violet', label: 'Added to task' },
-  'auto-executed': { tone: 'brand', label: 'Auto-executed' },
 }
 const done = computed(() => props.rec.status !== 'pending')
 const impactM = computed(() => (props.rec.estImpact / 1_000_000).toFixed(1))
@@ -46,7 +45,7 @@ const impactM = computed(() => (props.rec.estImpact / 1_000_000).toFixed(1))
         <div class="flex flex-wrap items-center gap-2">
           <Badge :tone="rec.risk === 'auto' ? 'green' : 'amber'" size="sm">
             <ShieldCheck class="h-3 w-3" />
-            {{ rec.risk === 'auto' ? 'Low risk' : 'Needs review' }}
+            {{ rec.risk === 'auto' ? 'Quick win' : 'Needs review' }}
           </Badge>
           <Badge v-if="statusMap[rec.status]" :tone="statusMap[rec.status].tone" size="sm">
             {{ statusMap[rec.status].label }}
@@ -56,6 +55,9 @@ const impactM = computed(() => (props.rec.estImpact / 1_000_000).toFixed(1))
           </span>
         </div>
         <h3 class="mt-2 text-sm font-semibold text-slate-900">{{ rec.title }}</h3>
+        <p v-if="rec.dates" class="mt-1 flex items-center gap-1 text-xs font-medium text-slate-500">
+          <CalendarDays class="h-3.5 w-3.5 text-slate-400" /> {{ rec.dates }}
+        </p>
       </div>
       <div class="shrink-0 text-right">
         <p class="text-[11px] font-medium text-slate-400">Est. impact</p>

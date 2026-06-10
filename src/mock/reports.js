@@ -11,7 +11,7 @@ export function buildReport(propertyId, period = 'Last 7 days') {
   const actions = [
     ...agentLogSeed.filter((a) => a.propertyId === propertyId).map((a) => a.summary),
     ...recsForProperty(propertyId)
-      .filter((r) => r.status === 'approved' || r.status === 'auto-executed')
+      .filter((r) => r.status === 'approved')
       .map((r) => r.applyLabel),
   ]
   return {

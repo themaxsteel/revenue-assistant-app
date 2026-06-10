@@ -2,15 +2,19 @@
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { ArrowUpRight, ArrowDownRight, MapPin, ChevronLeft, ChevronRight, ChevronDown, Pin, Check } from 'lucide-vue-next'
+import { ArrowUpRight, ArrowDownRight, MapPin, ChevronLeft, ChevronRight, ChevronDown, Pin, Check, Sparkles, X } from 'lucide-vue-next'
 import { occupancyCell } from '@/mock/occupancyMatrix'
 import { propertyTypeLabel } from '@/mock/properties'
+import { buildDemoSuggestions } from '@/mock/calendarSuggestions'
+import { useAgentStore } from '@/stores/agent'
+import Badge from '@/components/ui/Badge.vue'
 
 const props = defineProps({
   properties: { type: Array, required: true },
 })
 
 const router = useRouter()
+const agent = useAgentStore()
 
 // ── Drill-down state. Opens on the 12-month overview; clicking a month opens
 // that month's daily occupancy. ──
@@ -147,12 +151,60 @@ function togglePin(id) {
   pinned.value = s
 }
 
+// ── Smart Suggestions on cells: live (pending) recs + demo fillers ──
+const liveSuggestions = computed(() =>
+  agent.recommendations
+    .filter((r) => r.status === 'pending')
+    .map((r) => {
+      const s = today.add(r.daysOut ?? 0, 'day')
+      const span = (r.type || '').includes('rate') ? 2 : 0
+      return {
+        id: r.id,
+        propertyId: r.propertyId,
+        type: r.type,
+        risk: r.risk,
+        title: r.title,
+        estImpact: r.estImpact,
+        confidence: r.confidence,
+        start: s.format('YYYY-MM-DD'),
+        end: s.add(span, 'day').format('YYYY-MM-DD'),
+        source: 'live',
+      }
+    }),
+)
+// Demo suggestions only fill months that have no live rec for that property.
+const demoSuggestions = computed(() => {
+  const liveBuckets = new Set(liveSuggestions.value.map((s) => `${s.propertyId}|${s.start.slice(0, 7)}`))
+  return buildDemoSuggestions(props.properties).filter(
+    (s) => !liveBuckets.has(`${s.propertyId}|${s.start.slice(0, 7)}`),
+  )
+})
+const suggestionsByProp = computed(() => {
+  const m = new Map()
+  for (const s of [...liveSuggestions.value, ...demoSuggestions.value]) {
+    if (!m.has(s.propertyId)) m.set(s.propertyId, [])
+    m.get(s.propertyId).push(s)
+  }
+  return m
+})
+function cellSuggestions(pid, c) {
+  const list = suggestionsByProp.value.get(pid)
+  if (!list) return []
+  if (c.day == null) {
+    const ym = `${c.year}-${String(c.month + 1).padStart(2, '0')}`
+    return list.filter((s) => s.start.slice(0, 7) === ym || s.end.slice(0, 7) === ym)
+  }
+  const d = `${c.year}-${String(c.month + 1).padStart(2, '0')}-${String(c.day).padStart(2, '0')}`
+  return list.filter((s) => s.start <= d && d <= s.end)
+}
+
 function makeRow(p) {
   return {
     property: p,
-    cells: columns.value.map((c) =>
-      occupancyCell(p, { year: c.year, month: c.month, day: c.day }),
-    ),
+    cells: columns.value.map((c) => {
+      const occ = occupancyCell(p, { year: c.year, month: c.month, day: c.day })
+      return { ...occ, suggestions: cellSuggestions(p.id, c) }
+    }),
   }
 }
 
@@ -232,12 +284,14 @@ function backToMonths() {
 // ── Hover tooltip (teleported so overflow can't clip it). ──
 const tip = ref(null)
 function showTip(e, property, cell, column) {
+  if (pop.value) return // don't fight with an open popover
   const r = e.currentTarget.getBoundingClientRect()
   const above = r.top > 230
   tip.value = {
     property,
     cell,
     label: column.tipLabel,
+    suggestions: cell.suggestions || [],
     x: Math.min(Math.max(r.left + r.width / 2, 130), window.innerWidth - 130),
     y: above ? r.top - 10 : r.bottom + 10,
     above,
@@ -247,8 +301,40 @@ function hideTip() {
   tip.value = null
 }
 
+// ── Click popover with suggestion detail (persistent until dismissed). ──
+const pop = ref(null)
+function openPopover(e, property, cell, column) {
+  const r = e.currentTarget.getBoundingClientRect()
+  const above = r.top > 320
+  pop.value = {
+    property,
+    label: column.tipLabel,
+    items: cell.suggestions,
+    x: Math.min(Math.max(r.left + r.width / 2, 180), window.innerWidth - 180),
+    y: above ? r.top - 8 : r.bottom + 8,
+    above,
+  }
+  hideTip()
+}
+function closePopover() {
+  pop.value = null
+}
+function fmtImpact(v) {
+  return v >= 1_000_000 ? `Rp ${(v / 1_000_000).toFixed(1)}jt/wk` : `Rp ${Math.round(v / 1_000)}rb/wk`
+}
+
 function openProperty(p) {
   router.push(`/property/${p.id}/forecast`)
+}
+// Cells with suggestions open the popover; otherwise jump to the property.
+function onCellClick(e, property, cell, column) {
+  if (cell.suggestions.length) openPopover(e, property, cell, column)
+  else openProperty(property)
+}
+function goToSmartSuggest() {
+  const id = pop.value?.property.id
+  closePopover()
+  if (id) router.push(`/property/${id}/agent`)
 }
 </script>
 
@@ -440,9 +526,9 @@ function openProperty(p) {
               <button
                 v-for="(cell, ci) in row.cells"
                 :key="ci"
-                class="pressable group flex items-center justify-center border-r border-slate-100 p-1 transition-transform duration-150 last:border-r-0 hover:scale-[1.06]"
+                class="pressable group relative flex items-center justify-center border-r border-slate-100 p-1 transition-transform duration-150 last:border-r-0 hover:scale-[1.06]"
                 :class="timeColClass"
-                @click="openProperty(row.property)"
+                @click="onCellClick($event, row.property, cell, columns[ci])"
                 @mouseenter="showTip($event, row.property, cell, columns[ci])"
                 @mouseleave="hideTip"
               >
@@ -452,6 +538,12 @@ function openProperty(p) {
                 >
                   {{ cell.occupancy }}%
                 </span>
+                <!-- Smart Suggestion badge -->
+                <span
+                  v-if="cell.suggestions.length"
+                  class="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[9px] font-bold text-white shadow ring-2 ring-white"
+                  :title="`${cell.suggestions.length} smart suggestion${cell.suggestions.length > 1 ? 's' : ''}`"
+                >{{ cell.suggestions.length }}</span>
               </button>
             </div>
           </template>
@@ -519,9 +611,72 @@ function openProperty(p) {
             {{ tip.cell.paceDelta >= 0 ? '+' : '' }}{{ tip.cell.paceDelta }}%
           </span>
         </div>
-        <p class="mt-2 text-[10px] text-slate-400">Click to open property forecast</p>
+
+        <!-- Smart suggestions for this cell -->
+        <div v-if="tip.suggestions.length" class="mt-2 border-t border-slate-100 pt-2">
+          <p class="flex items-center gap-1 text-[11px] font-semibold text-brand-600">
+            <Sparkles class="h-3 w-3" /> {{ tip.suggestions.length }} smart suggestion{{ tip.suggestions.length > 1 ? 's' : '' }}
+          </p>
+          <ul class="mt-1 space-y-1">
+            <li v-for="s in tip.suggestions.slice(0, 3)" :key="s.id" class="flex items-start gap-1.5 text-[11px] text-slate-600">
+              <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" :class="s.risk === 'approval' ? 'bg-amber-400' : 'bg-brand-500'"></span>
+              <span class="min-w-0 flex-1 truncate">{{ s.title }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <p class="mt-2 text-[10px] text-slate-400">
+          {{ tip.suggestions.length ? 'Click for details' : 'Click to open property forecast' }}
+        </p>
       </div>
     </Transition>
+  </Teleport>
+
+  <!-- Click popover: suggestion detail -->
+  <Teleport to="body">
+    <div v-if="pop">
+      <div class="fixed inset-0 z-[55]" @click="closePopover"></div>
+      <div
+        class="fixed z-[60] w-72 -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-pop"
+        :class="pop.above ? '-translate-y-full' : ''"
+        :style="{ left: pop.x + 'px', top: pop.y + 'px' }"
+      >
+        <div class="flex items-start gap-2">
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold text-slate-900">{{ pop.property.name }}</p>
+            <p class="text-[11px] font-medium uppercase tracking-wide text-brand-600">{{ pop.label }}</p>
+          </div>
+          <button class="pressable -mr-1 -mt-1 rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" @click="closePopover">
+            <X class="h-4 w-4" />
+          </button>
+        </div>
+
+        <p class="mt-2 flex items-center gap-1 text-[11px] font-semibold text-brand-600">
+          <Sparkles class="h-3.5 w-3.5" /> {{ pop.items.length }} smart suggestion{{ pop.items.length > 1 ? 's' : '' }}
+        </p>
+        <ul class="mt-1.5 max-h-64 space-y-1.5 overflow-auto">
+          <li v-for="s in pop.items" :key="s.id" class="rounded-lg border border-slate-100 bg-slate-50/70 p-2">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-xs font-semibold text-slate-800">{{ s.title }}</span>
+              <Badge :tone="s.risk === 'approval' ? 'amber' : 'green'" size="sm" class="shrink-0">
+                {{ s.risk === 'approval' ? 'Needs review' : 'Quick win' }}
+              </Badge>
+            </div>
+            <div class="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
+              <span class="font-medium text-emerald-600">{{ fmtImpact(s.estImpact) }}</span>
+              <span>{{ s.confidence }}% confidence</span>
+            </div>
+          </li>
+        </ul>
+
+        <button
+          class="pressable mt-2.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition-colors duration-150 hover:bg-brand-700"
+          @click="goToSmartSuggest"
+        >
+          <Sparkles class="h-3.5 w-3.5" /> Open in Smart Suggest
+        </button>
+      </div>
+    </div>
   </Teleport>
 </template>
 

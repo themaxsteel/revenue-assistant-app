@@ -1,4 +1,4 @@
-import { rng, pick, intRange, range, clamp } from './util'
+import { rng, intRange, range, clamp } from './util'
 
 // Curated Unsplash hospitality shots (villas, resorts, tropical stays). Assigned
 // deterministically per property so each card keeps the same photo. The UI falls
@@ -41,7 +41,6 @@ const NAMES = [
 ]
 
 const UNITS = { villa: [3, 8], guesthouse: [6, 16], boutique: [12, 28] }
-const MODES = ['auto', 'suggest', 'suggest', 'manual'] // weighted toward suggest
 
 const OWNERS = [
   'Pak Wayan', 'Bu Sari', 'Mr. Tanaka', 'Ms. Clara', 'Pak Budi', 'Bu Indah',
@@ -69,7 +68,6 @@ export const properties = NAMES.map(([name, type, city], i) => {
   const paceDelta = Math.round(range(rand, -14, 22)) // % vs last year
   const pickup7d = Math.round(range(rand, -8, 26)) // rooms picked up last 7d trend
   const alertCount = rand() < 0.35 ? intRange(rand, 1, 3) : 0
-  const mode = pick(rand, MODES)
   const sparkline = Array.from({ length: 12 }, () =>
     Math.round(clamp(occupancy + range(rand, -18, 18), 20, 100)),
   )
@@ -87,7 +85,6 @@ export const properties = NAMES.map(([name, type, city], i) => {
     paceDelta,
     pickup7d,
     alertCount,
-    autonomyMode: mode, // 'manual' | 'suggest' | 'auto'
     healthScore: healthFrom(occupancy, paceDelta, alertCount),
     ownerName: OWNERS[i],
     ownerPhone: `+62 81${intRange(rand, 10, 99)}-${intRange(rand, 1000, 9999)}-${intRange(rand, 1000, 9999)}`,

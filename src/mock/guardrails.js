@@ -1,14 +1,10 @@
-// Global guardrails the AI Agent must respect in 'auto' mode. Per-property
-// overrides can be layered on top. killSwitch globally disables auto-execution.
+// Limits the Revenue Assistant respects when proposing changes. Nothing is
+// applied automatically — these only bound the suggestions it prepares.
 export const globalGuardrails = {
-  killSwitch: false,
-  maxDailyDeltaPct: 15, // max auto rate change per day
+  maxDailyDeltaPct: 15, // max suggested rate change per day
   floorPct: 70, // floor as % of BAR baseline
   ceilingPct: 180, // ceiling as % of BAR baseline
-  lastMinuteLockHrs: 48, // no auto changes inside this window before arrival
-  agentHours: '06:00–22:00 WIB',
-  autoActionsToday: 14,
-  blockedByGuardrailToday: 3,
+  lastMinuteLockHrs: 48, // no rate-change suggestions inside this window before arrival
 }
 
 // Integration status board — the 12 systems the company already operates.

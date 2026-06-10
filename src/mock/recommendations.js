@@ -2,8 +2,9 @@ import dayjs from 'dayjs'
 import { properties } from './properties'
 import { rng, pick, intRange, range } from './util'
 
-// AI Agent recommendations. risk = 'auto' (auto-eligible, low risk, reversible)
-// or 'approval' (needs RA sign-off). status drives the approve/reject flow in Pinia.
+// AI recommendations. risk = 'auto' (a quick win — low risk, reversible) or
+// 'approval' (higher-impact, needs a closer review). Nothing is applied
+// automatically; status drives the manual approve/reject/task flow in Pinia.
 
 const ACTIONS = [
   {
@@ -126,7 +127,7 @@ function buildRec(prop, action, rand) {
     deltaPct: direction * amt,
     estImpact, // weekly RevPAR uplift estimate, IDR
     confidence: intRange(rand, 72, 96),
-    status: 'pending', // pending | approved | rejected | snoozed | auto-executed
+    status: 'pending', // pending | approved | rejected | snoozed | tasked
     createdAt: dayjs().subtract(intRange(rand, 0, 6), 'hour').toISOString(),
     applyLabel: action.apply({ dates, recommendedRate: 'updated' }),
   }

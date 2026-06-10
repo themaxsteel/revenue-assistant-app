@@ -1,11 +1,10 @@
 <script setup>
 import { ref } from 'vue'
-import { Settings as SettingsIcon, Power, Plug, Users, ShieldAlert } from 'lucide-vue-next'
+import { Settings as SettingsIcon, Plug } from 'lucide-vue-next'
 import { useAgentStore } from '@/stores/agent'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { integrations } from '@/mock/guardrails'
 import Card from '@/components/ui/Card.vue'
-import Toggle from '@/components/ui/Toggle.vue'
 import Badge from '@/components/ui/Badge.vue'
 
 const agent = useAgentStore()
@@ -19,25 +18,14 @@ const roleTone = { ra: 'brand', admin: 'violet' }
 <template>
   <div>
     <h1 class="flex items-center gap-2 text-xl font-bold text-slate-900"><SettingsIcon class="h-5 w-5 text-brand-600" /> Settings</h1>
-    <p class="text-sm text-slate-500">Guardrails, integrations and team — the admin controls behind the AI Agent.</p>
+    <p class="text-sm text-slate-500">Recommendation limits, integrations and team — the controls behind the Revenue Assistant.</p>
 
     <div class="mt-4 grid gap-5 lg:grid-cols-2">
-      <!-- Guardrails -->
-      <Card title="AI Agent guardrails" subtitle="Limits the agent must respect in Auto mode">
-        <div class="flex items-center justify-between rounded-xl p-3" :class="g.killSwitch ? 'bg-rose-50' : 'bg-slate-50'">
-          <div class="flex items-center gap-2.5">
-            <Power class="h-5 w-5" :class="g.killSwitch ? 'text-rose-500' : 'text-emerald-500'" />
-            <div>
-              <p class="text-sm font-semibold text-slate-800">Global kill-switch</p>
-              <p class="text-xs text-slate-400">{{ g.killSwitch ? 'Auto-execution is PAUSED' : 'Agent is active' }}</p>
-            </div>
-          </div>
-          <Toggle :model-value="g.killSwitch" tone="red" @update:model-value="agent.toggleKillSwitch()" />
-        </div>
-
-        <dl class="mt-4 space-y-3 text-sm">
+      <!-- Recommendation limits -->
+      <Card title="Recommendation limits" subtitle="Bounds the AI respects when proposing changes — nothing is applied automatically">
+        <dl class="space-y-3 text-sm">
           <div class="flex items-center justify-between">
-            <dt class="text-slate-500">Max daily rate change</dt>
+            <dt class="text-slate-500">Max suggested daily rate change</dt>
             <dd class="font-semibold text-slate-800">±{{ g.maxDailyDeltaPct }}%</dd>
           </div>
           <div class="flex items-center justify-between">
@@ -48,22 +36,10 @@ const roleTone = { ra: 'brand', admin: 'violet' }
             <dt class="text-slate-500">Last-minute lock</dt>
             <dd class="font-semibold text-slate-800">{{ g.lastMinuteLockHrs }}h before arrival</dd>
           </div>
-          <div class="flex items-center justify-between">
-            <dt class="text-slate-500">Agent operating hours</dt>
-            <dd class="font-semibold text-slate-800">{{ g.agentHours }}</dd>
-          </div>
         </dl>
-
-        <div class="mt-4 flex gap-2">
-          <div class="flex-1 rounded-xl bg-brand-50 p-3 text-center">
-            <p class="text-lg font-bold text-brand-700">{{ g.autoActionsToday }}</p>
-            <p class="text-xs text-slate-500">auto-actions today</p>
-          </div>
-          <div class="flex-1 rounded-xl bg-amber-50 p-3 text-center">
-            <p class="text-lg font-bold text-amber-700">{{ g.blockedByGuardrailToday }}</p>
-            <p class="text-xs text-slate-500">blocked by guardrails</p>
-          </div>
-        </div>
+        <p class="mt-4 rounded-xl bg-slate-50 p-3 text-xs text-slate-500">
+          The Revenue Assistant only prepares suggestions within these limits. You review and apply every change yourself.
+        </p>
       </Card>
 
       <!-- Integrations -->

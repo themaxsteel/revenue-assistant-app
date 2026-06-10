@@ -2,7 +2,8 @@
 
 A clickable UX prototype for an internal **Revenue Assistant (RA)** tool. Goal: let one RA
 manage up to **20 small properties** (villas, guesthouses, boutique hotels — Indonesia) with an
-**AI Agent** that recommends and (within guardrails) auto-executes revenue actions.
+**AI Assistant** that prepares revenue suggestions for the RA to review and apply.
+**Nothing runs automatically** — the assistant only recommends; the RA decides what to apply.
 
 This is a **front-end prototype with dummy data** — no backend, no real integrations. It exists to
 lock the UX and hand the backend team concrete screen flows + data shapes.
@@ -23,27 +24,30 @@ Vue 3 (`<script setup>`) · Vite · Tailwind CSS v3 · Vue Router · Pinia · Ch
 ## What to click
 
 - **Today** — Morning Triage. Prioritized worklist (Urgent / Watch / FYI) across all properties.
-  "Run all auto-eligible" executes low-risk actions. Click any item → the relevant property tab.
-- **Portfolio** — 20 property cards + an **RA Capacity meter** showing the 1-RA→20 premise.
-- **AI Agent** — Recommendations inbox (Approve / Reject / Snooze with explainable "why"),
-  Activity log (audit trail), and per-property Autonomy (Manual / Suggest / Auto).
+  Click any item → the relevant property tab. Nothing is applied automatically.
+- **Portfolio** — "Today's focus" briefing + a **List** view and a **Calendar (matrix)** view
+  (properties × time, occupancy heatmap, drill into a month for daily detail, with
+  Smart Suggestion badges on cells). Group, sort, filter, and pin properties.
+- **Smart Suggest** — Suggestions inbox (Add to task / Ask AI, with explainable "why" and a
+  "Quick win" / "Needs review" tag), plus an Activity log (audit trail). Everything is
+  reviewed and applied by the RA — there is no auto-execution.
 - **Tasks & Activities** — manual task tracker (quick-add, templates, recurring, due dates,
   property/owner/source links, outcome logging) + a combined Activity timeline of manual + AI
   actions. Recommendations and alerts can be pinned in as follow-up tasks (the "Task" / pin buttons).
 - **Owner Reports** — pick a property + period → PDF-style preview → simulate WhatsApp send.
 - **Social Media** — monitor the automation engine (platform performance, per-property reach &
   engagement, automation queue with approvals, top posts).
-- **Analytics**, **Alerts**, **Settings** (guardrails, kill-switch, integrations, team).
+- **Analytics**, **Alerts**, **Settings** (recommendation limits, integrations, team).
 - **Property workspace** — Overview, Pricing & Calendar, Demand & Forecast, Compset, Channels,
   Promotions, Upselling, AI Agent, Reports.
 
 ### Try the key flows
 
-1. Approve a recommendation → it moves to *Approved*, appears in the Agent **Activity log**, and the
+1. Approve a recommendation → it moves to *Approved*, appears in the **Activity log**, and the
    property's ADR/RevPAR updates.
-2. Set a property's autonomy to **Auto** → its auto-eligible recs become *Auto-executed*.
-3. Toggle the **kill-switch** (sidebar or Settings) → auto-execution is blocked portfolio-wide.
-4. Generate an owner report → **Send via WhatsApp** → it lands in *Recently sent*.
+2. Open the Portfolio **Calendar** view → click a month to drill into daily occupancy → click a
+   cell with a Smart Suggestion badge → review it and open it in the property's Smart Suggestions tab.
+3. Generate an owner report → **Send via WhatsApp** → it lands in *Recently sent*.
 
 State is held in Pinia and **resets on reload** (no persistence).
 
