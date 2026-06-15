@@ -1,15 +1,39 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { ChevronRight, Sparkles, CheckCircle2, List, CalendarRange, ArrowUpDown, Check } from 'lucide-vue-next'
+import dayjs from 'dayjs'
+import { ChevronRight, Sparkles, CheckCircle2, List, CalendarRange, ArrowUpDown, Check, TrendingUp } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useUiStore } from '@/stores/ui'
+import { useTasksStore } from '@/stores/tasks'
+import { idr } from '@/mock/util'
 import PropertyCard from '@/components/PropertyCard.vue'
 import PortfolioCalendar from '@/components/PortfolioCalendar.vue'
 
 const portfolio = usePortfolioStore()
 const agent = useAgentStore()
 const ui = useUiStore()
+const tasks = useTasksStore()
+
+// ── #11: This-week recap — operational wins from the last 7 days. ──
+const recap = computed(() => {
+  const weekAgo = dayjs().subtract(7, 'day')
+  const actioned = agent.events.filter(
+    (e) => (e.type === 'tasked' || e.type === 'applied') && dayjs(e.at).isAfter(weekAgo),
+  )
+  const uplift = actioned.reduce((s, e) => {
+    const r = agent.recommendations.find((x) => x.id === e.recId)
+    return s + (r?.estImpact || 0)
+  }, 0)
+  const tasksDone = tasks.done.filter((t) => t.completedAt && dayjs(t.completedAt).isAfter(weekAgo)).length
+  return { actioned: actioned.length, uplift, tasksDone, acceptance: agent.acceptanceStats.rate }
+})
+const recapStats = computed(() => [
+  { label: 'Suggestions actioned', value: recap.value.actioned, icon: Sparkles, chip: 'bg-brand-50 text-brand-600', valueClass: 'text-slate-900' },
+  { label: 'Est. weekly upside', value: `+${idr(recap.value.uplift, { compact: true })}`, icon: TrendingUp, chip: 'bg-emerald-50 text-emerald-600', valueClass: 'text-emerald-600' },
+  { label: 'Tasks done', value: recap.value.tasksDone, icon: CheckCircle2, chip: 'bg-slate-100 text-slate-500', valueClass: 'text-slate-900' },
+  { label: 'Acceptance', value: `${recap.value.acceptance}%`, icon: Check, chip: 'bg-brand-50 text-brand-600', valueClass: 'text-brand-700' },
+])
 
 // Properties view + sort controls. View persists in the ui store so it survives
 // navigating into a property and back.
@@ -142,9 +166,12 @@ const filtered = computed(() => {
       </p>
     </div>
 
+    <!-- Today's focus + This week — side by side -->
+    <div class="mt-3 grid items-start gap-3 lg:grid-cols-2">
+
     <!-- Today's focus — narrative briefing + a finite checklist so the RA knows
          exactly what to do today. -->
-    <div class="mt-3 overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-white shadow-card">
+    <div class="overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-white shadow-card">
       <div class="flex items-start gap-3.5 p-4">
         <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-600 text-white shadow-sm">
           <Sparkles class="h-5 w-5" />
@@ -216,6 +243,36 @@ const filtered = computed(() => {
           </p>
         </div>
       </div>
+    </div>
+
+    <!-- #11: This-week recap — operational wins -->
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+      <div class="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
+        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm">
+          <TrendingUp class="h-4.5 w-4.5" />
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-slate-900">This week</p>
+          <p class="text-[11px] text-slate-400">Your operational wins over the last 7 days</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2">
+        <div
+          v-for="(s, i) in recapStats"
+          :key="s.label"
+          class="flex items-start gap-2.5 px-4 py-3.5"
+          :class="[i < 2 ? 'border-b border-slate-100' : '', i % 2 ? 'border-l border-slate-100' : '']"
+        >
+          <span class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" :class="s.chip">
+            <component :is="s.icon" class="h-4 w-4" />
+          </span>
+          <div class="min-w-0">
+            <p class="text-xl font-bold leading-tight" :class="s.valueClass">{{ s.value }}</p>
+            <p class="mt-0.5 text-[11px] font-medium text-slate-500">{{ s.label }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
     </div>
 
     <!-- divider + view toggle + sort dropdown -->

@@ -43,7 +43,7 @@ const allClear = computed(() => actionable.value === 0)
 function pinItem(item) {
   if (item.category === 'decision') {
     const rec = agent.recommendations.find((r) => r.id === item.relatedId)
-    if (rec) tasks.addFromRecommendation(rec, portfolio.byId(rec.propertyId)?.name)
+    if (rec) tasks.addFromRecommendation(rec)
   } else if (item.category === 'alert') {
     const alert = portfolio.alerts.find((a) => a.id === item.relatedId)
     if (alert) tasks.addFromAlert(alert)

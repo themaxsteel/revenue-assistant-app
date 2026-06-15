@@ -52,9 +52,9 @@ export const useTasksStore = defineStore('tasks', {
     },
   },
   actions: {
-    addTask({ title, propertyId = null, ownerName = null, priority = 'medium', dueAt = null, recurring = null, link = null, note = '', steps = null }) {
-      if (!title?.trim()) return
-      this.tasks.unshift({
+    addTask({ title, propertyId = null, ownerName = null, priority = 'medium', dueAt = null, recurring = null, link = null, note = '', steps = null, _silent = false }) {
+      if (!title?.trim()) return null
+      const task = {
         id: `task-${++taskCounter}`,
         title: title.trim(),
         note,
@@ -69,8 +69,10 @@ export const useTasksStore = defineStore('tasks', {
         createdAt: dayjs().toISOString(),
         completedAt: null,
         outcome: null,
-      })
-      useUiStore().toast('Task added')
+      }
+      this.tasks.unshift(task)
+      if (!_silent) useUiStore().toast('Task added')
+      return task
     },
     complete(id, outcome = null) {
       const t = this.tasks.find((x) => x.id === id)
@@ -138,11 +140,12 @@ export const useTasksStore = defineStore('tasks', {
     _existingFor(type, id) {
       return this.tasks.find((t) => t.status === 'todo' && t.link?.type === type && t.link?.id === id)
     },
-    // Convert a recommendation or alert into a manual follow-up task (the bridge).
-    addFromRecommendation(rec) {
+    // Convert a recommendation into a manual follow-up task (the bridge).
+    // Returns { task, rec } on success or null (duplicate / invalid).
+    addFromRecommendation(rec, { silent = false } = {}) {
       if (this._existingFor('recommendation', rec.id)) {
-        useUiStore().toast('Already in your tasks', 'neutral')
-        return
+        if (!silent) useUiStore().toast('Already in your tasks', 'neutral')
+        return null
       }
       // Concrete, do-it-yourself instruction so the RA knows exactly what to change.
       const instruction =
@@ -150,7 +153,7 @@ export const useTasksStore = defineStore('tasks', {
           ? `Set the nightly rate to ${idr(rec.recommendedRate)} (${rec.deltaPct >= 0 ? '+' : ''}${rec.deltaPct}%).`
           : rec.applyLabel || rec.drivers?.[0] || ''
       const where = usePortfolioStore().byId(rec.propertyId)?.name || 'this property'
-      this.addTask({
+      const task = this.addTask({
         title: `Apply: ${rec.title}`,
         propertyId: rec.propertyId,
         priority: rec.risk === 'approval' ? 'high' : 'medium',
@@ -158,9 +161,41 @@ export const useTasksStore = defineStore('tasks', {
         link: { type: 'recommendation', id: rec.id, label: 'AI recommendation' },
         note: [instruction, rec.drivers?.[0]].filter(Boolean).join(' ').trim(),
         steps: howToSteps(rec, where),
+        _silent: true,
       })
       // Pinned recommendations leave the AI inbox — the RA owns it now.
       useAgentStore().markTasked(rec.id)
+      if (!silent) {
+        useUiStore().toast('Added to tasks', 'success', {
+          label: 'Undo',
+          onClick: () => {
+            this.remove(task.id)
+            useAgentStore().unmarkTasked(rec.id)
+          },
+        })
+      }
+      return { task, rec }
+    },
+    // #2 bulk: add several recommendations at once with a single undo.
+    bulkAddFromRecommendations(recs) {
+      const created = []
+      recs.forEach((rec) => {
+        const r = this.addFromRecommendation(rec, { silent: true })
+        if (r) created.push(r)
+      })
+      if (created.length) {
+        useUiStore().toast(`${created.length} added to tasks`, 'success', {
+          label: 'Undo',
+          onClick: () => {
+            const agent = useAgentStore()
+            created.forEach(({ task, rec }) => {
+              this.remove(task.id)
+              agent.unmarkTasked(rec.id)
+            })
+          },
+        })
+      }
+      return created
     },
     addFromAlert(alert) {
       if (this._existingFor('alert', alert.id)) {

@@ -91,7 +91,18 @@ export const useAgentStore = defineStore('agent', {
       if (!rec) return
       rec.status = 'rejected'
       this._recordEvent(rec, 'rejected', reason)
-      useUiStore().toast(`Rejected: ${rec.title}`, 'neutral')
+      useUiStore().toast(`Dismissed: ${rec.title}`, 'neutral', {
+        label: 'Undo',
+        onClick: () => this.unreject(recId),
+      })
+    },
+    // Undo a dismiss — back to the inbox, drop the rejected event.
+    unreject(recId) {
+      const rec = this.recommendations.find((r) => r.id === recId)
+      if (!rec) return
+      rec.status = 'pending'
+      const i = this.events.findIndex((e) => e.recId === recId && e.type === 'rejected')
+      if (i !== -1) this.events.splice(i, 1)
     },
     snooze(recId) {
       const rec = this.recommendations.find((r) => r.id === recId)
@@ -99,7 +110,10 @@ export const useAgentStore = defineStore('agent', {
       rec.status = 'snoozed'
       rec.snoozedUntil = dayjs().add(1, 'day').toISOString()
       this._recordEvent(rec, 'snoozed')
-      useUiStore().toast('Snoozed until tomorrow — find it under “Snoozed”', 'neutral')
+      useUiStore().toast('Snoozed until tomorrow', 'neutral', {
+        label: 'Undo',
+        onClick: () => this.unsnooze(recId),
+      })
     },
     unsnooze(recId) {
       const rec = this.recommendations.find((r) => r.id === recId)
@@ -114,6 +128,14 @@ export const useAgentStore = defineStore('agent', {
       if (!rec || rec.status !== 'pending') return
       rec.status = 'tasked'
       this._recordEvent(rec, 'tasked')
+    },
+    // Undo an "add to task" — back to the inbox, drop the tasked event.
+    unmarkTasked(recId) {
+      const rec = this.recommendations.find((r) => r.id === recId)
+      if (!rec || rec.status !== 'tasked') return
+      rec.status = 'pending'
+      const i = this.events.findIndex((e) => e.recId === recId && e.type === 'tasked')
+      if (i !== -1) this.events.splice(i, 1)
     },
     // Bring back any snoozed items whose time has elapsed (called on app load).
     resurfaceSnoozed() {

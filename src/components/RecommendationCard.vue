@@ -29,7 +29,7 @@ function openPreview() {
 }
 
 function pinToTask() {
-  tasks.addFromRecommendation(props.rec, property.value?.name)
+  tasks.addFromRecommendation(props.rec)
   preview.value = false
 }
 function askAI() {

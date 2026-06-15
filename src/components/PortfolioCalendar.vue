@@ -1,12 +1,14 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
-import { ArrowUpRight, ArrowDownRight, MapPin, ChevronLeft, ChevronRight, ChevronDown, Pin, Check, Sparkles, X } from 'lucide-vue-next'
+import { ArrowUpRight, ArrowDownRight, MapPin, ChevronLeft, ChevronRight, ChevronDown, Settings, Pin, Check, Sparkles, X, ListPlus, CheckCircle2, Eye, ArrowUpDown, Layers, SlidersHorizontal } from 'lucide-vue-next'
 import { occupancyCell } from '@/mock/occupancyMatrix'
 import { propertyTypeLabel } from '@/mock/properties'
 import { buildDemoSuggestions } from '@/mock/calendarSuggestions'
 import { useAgentStore } from '@/stores/agent'
+import { useTasksStore } from '@/stores/tasks'
+import { useCalendarStore } from '@/stores/calendar'
 import Badge from '@/components/ui/Badge.vue'
 
 const props = defineProps({
@@ -15,6 +17,37 @@ const props = defineProps({
 
 const router = useRouter()
 const agent = useAgentStore()
+const tasks = useTasksStore()
+const cal = useCalendarStore()
+const settingsOpen = ref(false)
+const settingsPos = ref({ top: 0, right: 0 })
+const gearRef = ref(null)
+function updateSettingsPos() {
+  const el = gearRef.value
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  settingsPos.value = { top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) }
+}
+function openSettings() {
+  if (settingsOpen.value) {
+    settingsOpen.value = false
+    return
+  }
+  updateSettingsPos()
+  settingsOpen.value = true
+}
+// Keep the popup anchored under the gear while the page (or grid) scrolls.
+function onReposition() {
+  if (settingsOpen.value) updateSettingsPos()
+}
+onMounted(() => {
+  window.addEventListener('scroll', onReposition, true)
+  window.addEventListener('resize', onReposition)
+})
+onUnmounted(() => {
+  window.removeEventListener('scroll', onReposition, true)
+  window.removeEventListener('resize', onReposition)
+})
 
 // ── Drill-down state. Opens on the 12-month overview; clicking a month opens
 // that month's daily occupancy. ──
@@ -30,8 +63,7 @@ const FILTERS = [
   { key: 'low', label: 'Low occ <55%' },
   { key: 'strong', label: 'Strong ≥80%' },
 ]
-const activeFilter = ref('all')
-function passesFilter(p, key = activeFilter.value) {
+function passesFilter(p, key = cal.activeFilter) {
   if (key === 'attention') return p.alertCount > 0 || p.occupancy < 55 || p.paceDelta <= -10
   if (key === 'low') return p.occupancy < 55
   if (key === 'strong') return p.occupancy >= 80
@@ -45,19 +77,16 @@ function countFor(key) {
 const SORTS = [
   { key: 'priority', label: 'Priority' },
   { key: 'occupancy', label: 'Occupancy' },
-  { key: 'name', label: 'A–Z' },
+  { key: 'name', label: 'Name (A–Z)' },
 ]
-const sortKey = ref('priority')
-const sortOpen = ref(false)
-const sortLabel = computed(() => SORTS.find((s) => s.key === sortKey.value)?.label)
 function attentionRank(p) {
   return p.alertCount > 0 || p.occupancy < 55 || p.paceDelta <= -10 ? 0 : 1
 }
 const visibleProperties = computed(() => {
   let list = props.properties.filter((p) => passesFilter(p))
-  if (sortKey.value === 'occupancy') {
+  if (cal.sortKey === 'occupancy') {
     list = [...list].sort((a, b) => b.occupancy - a.occupancy)
-  } else if (sortKey.value === 'name') {
+  } else if (cal.sortKey === 'name') {
     list = [...list].sort((a, b) => a.name.localeCompare(b.name))
   } else {
     list = [...list].sort((a, b) => attentionRank(a) - attentionRank(b) || a.healthScore - b.healthScore)
@@ -125,13 +154,10 @@ const GROUP_BYS = [
   { key: 'region', label: 'Region' },
   { key: 'type', label: 'Type' },
 ]
-const groupBy = ref('none')
-const groupOpen = ref(false)
-const groupLabel = computed(() => GROUP_BYS.find((g) => g.key === groupBy.value)?.label)
 const collapsed = ref(new Set())
 function groupValue(p) {
-  if (groupBy.value === 'region') return p.city.split('—')[0].trim()
-  if (groupBy.value === 'type') return propertyTypeLabel[p.type] || p.type
+  if (cal.groupBy === 'region') return p.city.split('—')[0].trim()
+  if (cal.groupBy === 'type') return propertyTypeLabel[p.type] || p.type
   return null
 }
 function toggleCollapse(key) {
@@ -151,10 +177,11 @@ function togglePin(id) {
   pinned.value = s
 }
 
-// ── Smart Suggestions on cells: live (pending) recs + demo fillers ──
+// ── Smart Suggestions on cells: live recs (pending + recently handled) + demo
+// fillers. #13: handled recs stay visible so the cell shows a "done" state. ──
 const liveSuggestions = computed(() =>
   agent.recommendations
-    .filter((r) => r.status === 'pending')
+    .filter((r) => ['pending', 'tasked', 'approved'].includes(r.status))
     .map((r) => {
       const s = today.add(r.daysOut ?? 0, 'day')
       const span = (r.type || '').includes('rate') ? 2 : 0
@@ -169,6 +196,8 @@ const liveSuggestions = computed(() =>
         start: s.format('YYYY-MM-DD'),
         end: s.add(span, 'day').format('YYYY-MM-DD'),
         source: 'live',
+        status: r.status,
+        handled: r.status !== 'pending',
       }
     }),
 )
@@ -203,9 +232,67 @@ function makeRow(p) {
     property: p,
     cells: columns.value.map((c) => {
       const occ = occupancyCell(p, { year: c.year, month: c.month, day: c.day })
-      return { ...occ, suggestions: cellSuggestions(p.id, c) }
+      const suggestions = cellSuggestions(p.id, c)
+      return {
+        ...occ,
+        roomsLeft: Math.max(0, Math.round(p.units * (1 - occ.occupancy / 100))),
+        suggestions,
+        pendingSug: suggestions.filter((s) => !s.handled),
+        handledSug: suggestions.filter((s) => s.handled),
+      }
     }),
   }
+}
+
+// What each cell prints, per the "Show data" setting. Colour always reflects
+// demand (occupancy): high occupancy = few rooms left = green. So the same heat
+// scale reads correctly for both — only the legend wording changes.
+// In month view the rooms-left figure is an avg/night, so it gets a "~" prefix.
+function cellLabel(cell) {
+  if (cal.showData !== 'roomsLeft') return `${cell.occupancy}%`
+  return view.value === 'month' ? `~${cell.roomsLeft}` : `${cell.roomsLeft}`
+}
+const LEGEND = {
+  occupancy: {
+    title: 'Occupancy',
+    items: [
+      { c: 'bg-rose-300', l: '<48%' },
+      { c: 'bg-orange-300', l: '48–57%' },
+      { c: 'bg-amber-200', l: '58–67%' },
+      { c: 'bg-emerald-300', l: '68–77%' },
+      { c: 'bg-emerald-500', l: '78–87%' },
+      { c: 'bg-emerald-600', l: '88%+' },
+    ],
+  },
+  roomsLeft: {
+    title: 'Rooms left',
+    items: [
+      { c: 'bg-rose-300', l: 'Lots left' },
+      { c: 'bg-orange-300', l: 'Many left' },
+      { c: 'bg-amber-200', l: 'Some left' },
+      { c: 'bg-emerald-300', l: 'Few left' },
+      { c: 'bg-emerald-500', l: 'Very few' },
+      { c: 'bg-emerald-600', l: 'Sold out' },
+    ],
+  },
+}
+const legend = computed(() => {
+  const base = LEGEND[cal.showData] || LEGEND.occupancy
+  // Month cells show an avg-per-night figure — make the legend say so.
+  if (cal.showData === 'roomsLeft' && view.value === 'month') return { ...base, title: 'Rooms left / night' }
+  return base
+})
+
+// #12: act on a live suggestion straight from the calendar popover.
+function addSuggestionToTask(s) {
+  const rec = agent.recommendations.find((r) => r.id === s.id)
+  if (!rec || rec.status !== 'pending') return
+  tasks.addFromRecommendation(rec)
+  s.handled = true // reflect in the open popover immediately
+  s.status = 'tasked'
+}
+function statusLabel(s) {
+  return s.status === 'approved' ? 'Applied' : 'Added to tasks'
 }
 
 // Sections: a pinned section first (if any), then either one flat section or
@@ -218,7 +305,7 @@ const sections = computed(() => {
   if (pins.length) {
     out.push({ key: '__pinned', label: 'Pinned', pinned: true, count: pins.length, rows: pins.map(makeRow) })
   }
-  if (groupBy.value === 'none') {
+  if (cal.groupBy === 'none') {
     out.push({ key: '__all', label: null, count: rest.length, rows: rest.map(makeRow) })
   } else {
     const map = new Map()
@@ -347,13 +434,13 @@ function goToSmartSuggest() {
           v-for="f in FILTERS"
           :key="f.key"
           class="pressable inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors duration-150"
-          :class="activeFilter === f.key ? 'border-brand-200 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'"
-          @click="activeFilter = f.key"
+          :class="cal.activeFilter === f.key ? 'border-brand-200 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'"
+          @click="cal.activeFilter = f.key"
         >
           {{ f.label }}
           <span
             class="rounded-full px-1.5 text-[10px] font-bold leading-tight"
-            :class="activeFilter === f.key ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-400'"
+            :class="cal.activeFilter === f.key ? 'bg-brand-100 text-brand-700' : 'bg-slate-100 text-slate-400'"
           >{{ countFor(f.key) }}</span>
         </button>
       </div>
@@ -361,55 +448,121 @@ function goToSmartSuggest() {
       <div class="ml-auto flex items-center gap-2">
         <span class="hidden text-[11px] text-slate-400 sm:inline">{{ visibleProperties.length }} of {{ properties.length }}</span>
 
-        <!-- Group dropdown -->
-        <div class="relative">
-          <button
-            class="pressable inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
-            @click="groupOpen = !groupOpen"
-          >
-            <span class="text-slate-400">Group:</span> {{ groupLabel }}
-            <ChevronDown class="h-3.5 w-3.5 text-slate-400" />
-          </button>
-          <div v-if="groupOpen" class="fixed inset-0 z-30" @click="groupOpen = false"></div>
-          <div v-if="groupOpen" class="absolute right-0 z-40 mt-1.5 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-pop">
-            <button
-              v-for="g in GROUP_BYS"
-              :key="g.key"
-              class="pressable flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors duration-150"
-              :class="groupBy === g.key ? 'bg-brand-50 font-medium text-brand-700' : 'text-slate-600 hover:bg-slate-50'"
-              @click="groupBy = g.key; groupOpen = false"
-            >
-              {{ g.label }}
-              <Check v-if="groupBy === g.key" class="h-4 w-4 shrink-0 text-brand-600" />
-            </button>
-          </div>
-        </div>
-
-        <!-- Sort dropdown -->
-        <div class="relative">
-          <button
-            class="pressable inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
-            @click="sortOpen = !sortOpen"
-          >
-            <span class="text-slate-400">Sort:</span> {{ sortLabel }}
-            <ChevronDown class="h-3.5 w-3.5 text-slate-400" />
-          </button>
-          <div v-if="sortOpen" class="fixed inset-0 z-30" @click="sortOpen = false"></div>
-          <div v-if="sortOpen" class="absolute right-0 z-40 mt-1.5 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-pop">
-            <button
-              v-for="s in SORTS"
-              :key="s.key"
-              class="pressable flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors duration-150"
-              :class="sortKey === s.key ? 'bg-brand-50 font-medium text-brand-700' : 'text-slate-600 hover:bg-slate-50'"
-              @click="sortKey = s.key; sortOpen = false"
-            >
-              {{ s.label }}
-              <Check v-if="sortKey === s.key" class="h-4 w-4 shrink-0 text-brand-600" />
-            </button>
-          </div>
-        </div>
+        <!-- Settings (gear) — popup is teleported below -->
+        <button
+          ref="gearRef"
+          class="pressable inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
+          title="Calendar settings"
+          @click="openSettings"
+        >
+          <Settings class="h-4 w-4 text-slate-400" /> <span class="hidden sm:inline">Settings</span>
+        </button>
       </div>
     </div>
+
+    <!-- Settings popup (teleported so the card's overflow can't clip it) -->
+    <Teleport to="body">
+      <div v-if="settingsOpen" class="fixed inset-0 z-[55]" @click="settingsOpen = false"></div>
+      <Transition name="pop">
+        <div
+          v-if="settingsOpen"
+          class="fixed z-[60] w-72 origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-pop"
+          :style="{ top: settingsPos.top + 'px', right: settingsPos.right + 'px' }"
+        >
+          <!-- Header -->
+          <div class="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+            <Settings class="h-4 w-4 text-brand-600" />
+            <p class="text-sm font-semibold text-slate-900">Calendar settings</p>
+            <button
+              class="pressable -mr-1.5 ml-auto rounded-lg p-1 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-600"
+              @click="settingsOpen = false"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+
+          <div class="divide-y divide-slate-100 px-4">
+            <!-- Show data -->
+            <div class="py-3.5">
+              <p class="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <Eye class="h-3.5 w-3.5" /> Show data
+              </p>
+              <div class="grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
+                <button
+                  v-for="d in [['occupancy','Occupancy'],['roomsLeft','Rooms left']]"
+                  :key="d[0]"
+                  class="pressable rounded-lg px-2 py-1.5 text-xs font-semibold transition-all duration-150"
+                  :class="cal.showData === d[0] ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                  @click="cal.showData = d[0]"
+                >{{ d[1] }}</button>
+              </div>
+            </div>
+
+            <!-- Sort -->
+            <div class="py-3.5">
+              <p class="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <ArrowUpDown class="h-3.5 w-3.5" /> Sort properties by
+              </p>
+              <div class="space-y-0.5">
+                <button
+                  v-for="s in SORTS"
+                  :key="s.key"
+                  class="pressable flex w-full items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-left text-[13px] transition-colors duration-150"
+                  :class="cal.sortKey === s.key ? 'bg-brand-50 font-semibold text-brand-700' : 'font-medium text-slate-600 hover:bg-slate-50'"
+                  @click="cal.sortKey = s.key"
+                >
+                  {{ s.label }}
+                  <Check v-if="cal.sortKey === s.key" class="h-4 w-4 shrink-0 text-brand-600" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Group -->
+            <div class="py-3.5">
+              <p class="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <Layers class="h-3.5 w-3.5" /> Group by
+              </p>
+              <div class="grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+                <button
+                  v-for="g in GROUP_BYS"
+                  :key="g.key"
+                  class="pressable rounded-lg px-2 py-1.5 text-xs font-semibold transition-all duration-150"
+                  :class="cal.groupBy === g.key ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+                  @click="cal.groupBy = g.key"
+                >{{ g.label }}</button>
+              </div>
+            </div>
+
+            <!-- Display toggles -->
+            <div class="py-3.5">
+              <p class="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                <SlidersHorizontal class="h-3.5 w-3.5" /> Display
+              </p>
+              <div class="space-y-0.5">
+                <button
+                  v-for="t in [
+                    { key: 'showBadges', label: 'Smart suggestion badges' },
+                    { key: 'compact', label: 'Compact rows' },
+                    { key: 'weekendShading', label: 'Weekend shading' },
+                  ]"
+                  :key="t.key"
+                  class="pressable flex w-full items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-left text-[13px] font-medium text-slate-600 transition-colors duration-150 hover:bg-slate-50"
+                  @click="cal[t.key] = !cal[t.key]"
+                >
+                  {{ t.label }}
+                  <span
+                    class="relative h-5 w-9 shrink-0 rounded-full transition-colors duration-150"
+                    :class="cal[t.key] ? 'bg-brand-500' : 'bg-slate-300'"
+                  >
+                    <span class="absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-all duration-150" :class="cal[t.key] ? 'left-4' : 'left-0.5'"></span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Scroll viewport: header sticks to top (A1), name column sticks left -->
     <div class="max-h-[68vh] overflow-auto">
@@ -458,14 +611,14 @@ function goToSmartSuggest() {
               class="relative flex flex-col items-center justify-center gap-0.5 border-r border-slate-100 px-1 py-2 text-center last:border-r-0"
               :class="[
                 timeColClass,
-                c.isWeekend ? 'bg-slate-100/70' : '',
+                c.isWeekend && cal.weekendShading ? 'bg-sky-100/80' : '',
                 view === 'month' ? 'pressable cursor-pointer transition-colors duration-150 hover:bg-brand-50' : '',
               ]"
               :title="view === 'month' ? 'Click to view daily occupancy' : null"
               @click="view === 'month' && openMonth(c)"
             >
-              <span v-if="c.top" class="text-[10px] font-medium uppercase tracking-wide text-slate-400">{{ c.top }}</span>
-              <span class="text-sm font-bold leading-none text-slate-700">{{ c.main }}</span>
+              <span v-if="c.top" class="text-[10px] font-medium uppercase tracking-wide" :class="c.isWeekend && cal.weekendShading ? 'text-sky-600' : 'text-slate-400'">{{ c.top }}</span>
+              <span class="text-sm font-bold leading-none" :class="c.isWeekend && cal.weekendShading ? 'text-sky-700' : 'text-slate-700'">{{ c.main }}</span>
               <ChevronRight v-if="view === 'month'" class="absolute right-0.5 top-1/2 h-3 w-3 -translate-y-1/2 text-slate-300" />
             </component>
           </div>
@@ -515,11 +668,12 @@ function goToSmartSuggest() {
                   <Pin class="h-3.5 w-3.5" :class="isPinned(row.property.id) ? 'fill-brand-500' : ''" />
                 </button>
                 <button
-                  class="pressable min-w-0 flex-1 py-2 text-left"
+                  class="pressable min-w-0 flex-1 text-left"
+                  :class="cal.compact ? 'py-1' : 'py-2'"
                   @click="openProperty(row.property)"
                 >
                   <span class="block truncate text-sm font-semibold text-slate-800">{{ row.property.name }}</span>
-                  <span class="block truncate text-[11px] text-slate-400">{{ row.property.city }}</span>
+                  <span v-if="!cal.compact" class="block truncate text-[11px] text-slate-400">{{ row.property.city }}</span>
                 </button>
               </div>
 
@@ -527,23 +681,28 @@ function goToSmartSuggest() {
                 v-for="(cell, ci) in row.cells"
                 :key="ci"
                 class="pressable group relative flex items-center justify-center border-r border-slate-100 p-1 transition-transform duration-150 last:border-r-0 hover:scale-[1.06]"
-                :class="timeColClass"
+                :class="[timeColClass, columns[ci].isWeekend && cal.weekendShading ? 'bg-sky-100/70' : '']"
                 @click="onCellClick($event, row.property, cell, columns[ci])"
                 @mouseenter="showTip($event, row.property, cell, columns[ci])"
                 @mouseleave="hideTip"
               >
                 <span
-                  class="flex h-[44px] w-full items-center justify-center rounded-lg text-xs font-bold leading-none shadow-sm"
-                  :class="heat(cell.occupancy)"
+                  class="flex w-full items-center justify-center rounded-lg text-xs font-bold leading-none shadow-sm"
+                  :class="[heat(cell.occupancy), cal.compact ? 'h-[30px]' : 'h-[44px]']"
                 >
-                  {{ cell.occupancy }}%
+                  {{ cellLabel(cell) }}
                 </span>
-                <!-- Smart Suggestion badge -->
+                <!-- Smart Suggestion badge: pending count (brand) or handled (✓) -->
                 <span
-                  v-if="cell.suggestions.length"
+                  v-if="cal.showBadges && cell.pendingSug.length"
                   class="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[9px] font-bold text-white shadow ring-2 ring-white"
-                  :title="`${cell.suggestions.length} smart suggestion${cell.suggestions.length > 1 ? 's' : ''}`"
-                >{{ cell.suggestions.length }}</span>
+                  :title="`${cell.pendingSug.length} smart suggestion${cell.pendingSug.length > 1 ? 's' : ''}`"
+                >{{ cell.pendingSug.length }}</span>
+                <span
+                  v-else-if="cal.showBadges && cell.handledSug.length"
+                  class="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white shadow ring-2 ring-white"
+                  title="Suggestion handled"
+                ><Check class="h-2.5 w-2.5" /></span>
               </button>
             </div>
           </template>
@@ -556,15 +715,12 @@ function goToSmartSuggest() {
       </div>
     </div>
 
-    <!-- Legend -->
+    <!-- Legend (switches with the "Show data" setting) -->
     <div class="flex flex-wrap items-center gap-3 border-t border-slate-200 bg-slate-50/60 px-3 py-2 text-[11px] text-slate-500">
-      <span class="font-medium text-slate-600">Occupancy</span>
-      <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-rose-300"></span>&lt;48%</span>
-      <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-orange-300"></span>48–57%</span>
-      <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-amber-200"></span>58–67%</span>
-      <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-emerald-300"></span>68–77%</span>
-      <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-emerald-500"></span>78–87%</span>
-      <span class="flex items-center gap-1"><span class="h-3 w-3 rounded bg-emerald-600"></span>88%+</span>
+      <span class="font-medium text-slate-600">{{ legend.title }}</span>
+      <span v-for="it in legend.items" :key="it.l" class="flex items-center gap-1">
+        <span class="h-3 w-3 rounded" :class="it.c"></span>{{ it.l }}
+      </span>
       <span class="ml-auto text-slate-400">
         {{ view === 'month' ? 'Click a month to see daily occupancy' : 'Click any cell to open the property' }}
       </span>
@@ -593,12 +749,8 @@ function goToSmartSuggest() {
           <span class="text-base font-bold text-slate-900">{{ tip.cell.occupancy }}%</span>
         </div>
         <div class="mt-1.5 flex items-center justify-between text-xs">
-          <span class="text-slate-500">ADR</span>
-          <span class="font-semibold text-slate-800">{{ fmtIdr(tip.cell.adr) }}</span>
-        </div>
-        <div class="mt-1.5 flex items-center justify-between text-xs">
-          <span class="text-slate-500">RevPAR</span>
-          <span class="font-semibold text-slate-800">{{ fmtIdr(tip.cell.revpar) }}</span>
+          <span class="text-slate-500">{{ view === 'month' ? 'Avg rooms left / night' : 'Rooms left' }}</span>
+          <span class="font-semibold text-slate-800">{{ view === 'month' ? '≈' : '' }}{{ tip.cell.roomsLeft }} of {{ tip.property.units }}</span>
         </div>
         <div class="mt-1.5 flex items-center justify-between text-xs">
           <span class="text-slate-500">Pace vs last year</span>
@@ -655,7 +807,7 @@ function goToSmartSuggest() {
           <Sparkles class="h-3.5 w-3.5" /> {{ pop.items.length }} smart suggestion{{ pop.items.length > 1 ? 's' : '' }}
         </p>
         <ul class="mt-1.5 max-h-64 space-y-1.5 overflow-auto">
-          <li v-for="s in pop.items" :key="s.id" class="rounded-lg border border-slate-100 bg-slate-50/70 p-2">
+          <li v-for="s in pop.items" :key="s.id" class="rounded-lg border border-slate-100 bg-slate-50/70 p-2" :class="s.handled ? 'opacity-70' : ''">
             <div class="flex items-start justify-between gap-2">
               <span class="text-xs font-semibold text-slate-800">{{ s.title }}</span>
               <Badge :tone="s.risk === 'approval' ? 'amber' : 'green'" size="sm" class="shrink-0">
@@ -665,6 +817,20 @@ function goToSmartSuggest() {
             <div class="mt-1 flex items-center gap-3 text-[11px] text-slate-500">
               <span class="font-medium text-emerald-600">{{ fmtImpact(s.estImpact) }}</span>
               <span>{{ s.confidence }}% confidence</span>
+            </div>
+            <!-- #12/#13: act in place or show handled state -->
+            <div class="mt-1.5 flex items-center justify-end">
+              <span v-if="s.handled" class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                <CheckCircle2 class="h-3.5 w-3.5" /> {{ statusLabel(s) }}
+              </span>
+              <button
+                v-else-if="s.source === 'live'"
+                class="pressable inline-flex items-center gap-1 rounded-lg bg-brand-600 px-2 py-1 text-[11px] font-semibold text-white transition-colors duration-150 hover:bg-brand-700"
+                @click="addSuggestionToTask(s)"
+              >
+                <ListPlus class="h-3.5 w-3.5" /> Add to task
+              </button>
+              <span v-else class="text-[10px] italic text-slate-400">Forecast preview</span>
             </div>
           </li>
         </ul>
@@ -688,5 +854,16 @@ function goToSmartSuggest() {
 .tip-enter-from,
 .tip-leave-to {
   opacity: 0;
+}
+.pop-enter-active {
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out);
+}
+.pop-leave-active {
+  transition: opacity 110ms var(--ease-out), transform 110ms var(--ease-out);
+}
+.pop-enter-from,
+.pop-leave-to {
+  opacity: 0;
+  transform: scale(0.96) translateY(-4px);
 }
 </style>

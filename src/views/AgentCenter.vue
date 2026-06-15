@@ -1,8 +1,9 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Bot, ShieldCheck, LayoutGrid, List, ChevronLeft, ChevronRight, Clock, X } from 'lucide-vue-next'
+import { Bot, ShieldCheck, LayoutGrid, List, ChevronLeft, ChevronRight, Clock, X, Check, CheckSquare, ListPlus } from 'lucide-vue-next'
 import { useAgentStore } from '@/stores/agent'
 import { usePortfolioStore } from '@/stores/portfolio'
+import { useTasksStore } from '@/stores/tasks'
 import { SUGGESTION_REJECT_REASONS } from '@/mock/suggestionEvents'
 import RecommendationCard from '@/components/RecommendationCard.vue'
 import Card from '@/components/ui/Card.vue'
@@ -13,9 +14,34 @@ import { idr } from '@/mock/util'
 
 const agent = useAgentStore()
 const portfolio = usePortfolioStore()
+const tasks = useTasksStore()
 const tab = ref('inbox')
 const filter = ref('all') // all | approval | auto
 const mode = ref('grid') // grid | queue (#1 review queue)
+
+// ── #2 Bulk add-to-task (grid only) ──
+const selectMode = ref(false)
+const selected = ref(new Set())
+function toggleSelect(id) {
+  const s = new Set(selected.value)
+  s.has(id) ? s.delete(id) : s.add(id)
+  selected.value = s
+}
+function clearSel() {
+  selected.value = new Set()
+}
+function toggleSelectMode() {
+  selectMode.value = !selectMode.value
+  if (!selectMode.value) clearSel()
+}
+function addSelectedToTasks() {
+  const recs = [...selected.value]
+    .map((id) => agent.recommendations.find((r) => r.id === id && r.status === 'pending'))
+    .filter(Boolean)
+  tasks.bulkAddFromRecommendations(recs)
+  clearSel()
+  selectMode.value = false
+}
 
 const inbox = computed(() => {
   if (filter.value === 'snoozed') return agent.snoozed
@@ -70,6 +96,8 @@ function setMode(m) {
   mode.value = m
   queueIndex.value = 0
   dismissOpen.value = false
+  selectMode.value = false
+  clearSel()
 }
 
 const acc = computed(() => agent.acceptanceStats)
@@ -119,8 +147,18 @@ const acc = computed(() => agent.acceptanceStats)
           </button>
         </div>
 
+        <!-- Bulk select (grid only) -->
+        <button
+          v-if="mode === 'grid' && inbox.length"
+          class="pressable ml-auto inline-flex items-center gap-1 rounded-xl border px-2.5 py-1.5 text-xs font-medium transition-colors duration-150"
+          :class="selectMode ? 'border-brand-200 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-500 hover:text-slate-700'"
+          @click="toggleSelectMode"
+        >
+          <CheckSquare class="h-3.5 w-3.5" /> {{ selectMode ? 'Cancel select' : 'Select' }}
+        </button>
+
         <!-- View: grid / review queue -->
-        <div class="ml-auto flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white p-0.5">
+        <div class="flex items-center gap-0.5 rounded-xl border border-slate-200 bg-white p-0.5" :class="mode === 'grid' && inbox.length ? '' : 'ml-auto'">
           <button
             class="pressable inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors duration-150"
             :class="mode === 'grid' ? 'bg-brand-50 text-brand-700' : 'text-slate-400 hover:text-slate-600'"
@@ -145,14 +183,46 @@ const acc = computed(() => agent.acceptanceStats)
       </div>
 
       <!-- Grid -->
-      <div v-else-if="mode === 'grid'" class="stagger grid gap-3 lg:grid-cols-2">
-        <RecommendationCard
-          v-for="(rec, i) in inbox"
-          :key="rec.id"
-          :rec="rec"
-          show-property
-          :style="{ '--i': i % 6 }"
-        />
+      <div v-else-if="mode === 'grid'">
+        <div class="stagger grid gap-3 lg:grid-cols-2">
+          <div
+            v-for="(rec, i) in inbox"
+            :key="rec.id"
+            class="relative rounded-2xl transition-shadow"
+            :class="selectMode && selected.has(rec.id) ? 'ring-2 ring-brand-500 ring-offset-2' : ''"
+            :style="{ '--i': i % 6 }"
+          >
+            <div :class="selectMode ? 'pointer-events-none' : ''">
+              <RecommendationCard :rec="rec" show-property />
+            </div>
+            <!-- Selection overlay -->
+            <button
+              v-if="selectMode"
+              class="absolute inset-0 z-10 rounded-2xl"
+              :title="selected.has(rec.id) ? 'Deselect' : 'Select'"
+              @click="toggleSelect(rec.id)"
+            >
+              <span
+                class="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors"
+                :class="selected.has(rec.id) ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-300 bg-white'"
+              >
+                <Check v-if="selected.has(rec.id)" class="h-3 w-3" />
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bulk action bar -->
+        <div
+          v-if="selectMode && selected.size"
+          class="sticky bottom-4 z-20 mx-auto mt-4 flex w-fit items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-2.5 shadow-pop"
+        >
+          <span class="text-sm font-medium text-slate-700">{{ selected.size }} selected</span>
+          <AppButton variant="primary" size="sm" @click="addSelectedToTasks">
+            <ListPlus class="h-3.5 w-3.5" /> Add to tasks
+          </AppButton>
+          <AppButton variant="ghost" size="sm" @click="clearSel">Clear</AppButton>
+        </div>
       </div>
 
       <!-- Review queue -->
