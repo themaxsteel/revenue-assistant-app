@@ -1,7 +1,7 @@
 <script setup>
-import { computed, onMounted, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { RouterView, RouterLink, useRoute, useRouter } from 'vue-router'
-import { Sparkles } from 'lucide-vue-next'
+import { Sparkles, Building2, ChevronLeft, ChevronRight, ChevronDown, CheckCircle2, Circle } from 'lucide-vue-next'
 import { usePortfolioStore } from '@/stores/portfolio'
 import { useAgentStore } from '@/stores/agent'
 import { useTasksStore } from '@/stores/tasks'
@@ -89,6 +89,36 @@ const searchResults = computed(() => {
 function gotoProperty(id) {
   ui.search = ''
   router.push(`/property/${id}/overview`)
+}
+
+// Property context in the topbar — only when viewing a property detail page.
+const currentProperty = computed(() =>
+  route.path.startsWith('/property/') && route.params.id ? portfolio.byId(route.params.id) : null,
+)
+const currentTab = computed(() => route.path.split('/').pop())
+const propIndex = computed(() => portfolio.properties.findIndex((p) => p.id === route.params.id))
+const prevId = computed(
+  () => portfolio.properties[(propIndex.value - 1 + portfolio.count) % portfolio.count]?.id,
+)
+const nextId = computed(
+  () => portfolio.properties[(propIndex.value + 1) % portfolio.count]?.id,
+)
+function goToProperty(pid) {
+  if (pid) router.push(`/property/${pid}/${currentTab.value}`)
+}
+
+// Property switcher dropdown (opens on clicking the name in the topbar).
+const propMenuOpen = ref(false)
+function selectProperty(pid) {
+  propMenuOpen.value = false
+  goToProperty(pid)
+}
+watch(() => route.params.id, () => { propMenuOpen.value = false })
+const reviewedToday = computed(
+  () => !!currentProperty.value && portfolio.isReviewedToday(currentProperty.value.id),
+)
+function toggleReviewed() {
+  if (currentProperty.value) portfolio.setReviewed(currentProperty.value.id, !reviewedToday.value)
 }
 
 // On load, bring back any snoozed recommendations whose time has elapsed.
@@ -197,32 +227,96 @@ onMounted(() => agent.resurfaceSnoozed())
       :class="[ui.sidebarCollapsed ? 'pl-[68px]' : 'pl-60', chat.open ? 'lg:pr-[440px]' : '']"
     >
       <header class="sticky top-0 z-20 flex items-center gap-4 border-b border-slate-200 bg-slate-50/80 px-6 py-3 backdrop-blur">
-        <div class="relative flex-1 max-w-md">
-          <AppIcon name="search" :size="17" class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            v-model="ui.search"
-            type="text"
-            placeholder="Search properties…"
-            class="w-full rounded-xl border border-slate-200 bg-white py-2 pl-9 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          />
-          <!-- Quick-jump results (works from any page) -->
-          <div v-if="searchResults.length" class="absolute left-0 right-0 top-full z-30 mt-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-pop">
+        <!-- Left: property name + prev/next nav (property detail only) -->
+        <div class="flex min-w-0 items-center gap-1.5">
+          <template v-if="currentProperty">
             <button
-              v-for="p in searchResults"
-              :key="p.id"
-              class="pressable flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
-              @click="gotoProperty(p.id)"
+              class="pressable rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50"
+              title="Previous property"
+              @click="goToProperty(prevId)"
             >
-              <Building2 class="h-3.5 w-3.5 text-slate-400" />
-              <span class="flex-1 truncate font-medium text-slate-700">{{ p.name }}</span>
-              <span class="truncate text-xs text-slate-400">{{ p.city }}</span>
+              <ChevronLeft class="h-4 w-4" />
             </button>
-          </div>
-          <div v-else-if="ui.search.trim()" class="absolute left-0 right-0 top-full z-30 mt-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-400 shadow-pop">
-            No properties match “{{ ui.search }}”.
-          </div>
+            <div class="relative">
+              <button
+                class="pressable flex max-w-[240px] items-center gap-1 rounded-lg px-2 py-1.5 text-sm font-bold text-slate-900 transition-colors duration-150 ease-out hover:bg-slate-100 sm:max-w-[340px]"
+                title="Switch property"
+                @click="propMenuOpen = !propMenuOpen"
+              >
+                <span class="truncate">{{ currentProperty.name }}</span>
+                <ChevronDown class="h-4 w-4 shrink-0 text-slate-400 transition-transform duration-200" :class="propMenuOpen ? 'rotate-180' : ''" />
+              </button>
+              <!-- Property switcher dropdown -->
+              <template v-if="propMenuOpen">
+                <Teleport to="body">
+                  <div class="fixed inset-0 z-30" @click="propMenuOpen = false" />
+                </Teleport>
+                <div class="absolute left-0 top-full z-40 mt-1.5 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-pop">
+                  <button
+                    v-for="p in portfolio.properties"
+                    :key="p.id"
+                    class="pressable flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                    :class="p.id === currentProperty.id ? 'bg-brand-50' : ''"
+                    @click="selectProperty(p.id)"
+                  >
+                    <span class="flex-1 truncate font-medium" :class="p.id === currentProperty.id ? 'text-brand-700' : 'text-slate-700'">{{ p.name }}</span>
+                    <CheckCircle2 v-if="portfolio.isReviewedToday(p.id)" class="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                  </button>
+                </div>
+              </template>
+            </div>
+            <button
+              class="pressable rounded-lg border border-slate-200 bg-white p-1.5 text-slate-500 hover:bg-slate-50"
+              title="Next property"
+              @click="goToProperty(nextId)"
+            >
+              <ChevronRight class="h-4 w-4" />
+            </button>
+            <button
+              class="pressable ml-1 rounded-lg border p-1.5 transition-colors duration-150 ease-out"
+              :class="reviewedToday ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'"
+              :title="reviewedToday ? 'Reviewed today' : 'Mark reviewed'"
+              @click="toggleReviewed"
+            >
+              <component :is="reviewedToday ? CheckCircle2 : Circle" class="h-4 w-4" />
+            </button>
+          </template>
         </div>
+
         <div class="ml-auto flex items-center gap-2 text-sm">
+          <!-- Collapsible search: icon by default, expands on hover/focus -->
+          <div class="group/search relative">
+            <label
+              class="flex cursor-text items-center overflow-hidden rounded-xl border border-slate-200 bg-white transition-all duration-300 ease-drawer w-9 hover:bg-slate-50 group-hover/search:w-64 group-hover/search:hover:bg-white focus-within:w-64 focus-within:border-brand-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-brand-100"
+            >
+              <span class="flex h-9 w-9 shrink-0 items-center justify-center text-slate-400">
+                <AppIcon name="search" :size="17" />
+              </span>
+              <input
+                v-model="ui.search"
+                type="text"
+                placeholder="Search properties…"
+                class="min-w-0 flex-1 bg-transparent py-2 pr-3 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none"
+              />
+            </label>
+            <!-- Quick-jump results (works from any page) -->
+            <div v-if="searchResults.length" class="absolute right-0 top-full z-30 mt-1.5 w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-pop">
+              <button
+                v-for="p in searchResults"
+                :key="p.id"
+                class="pressable flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50"
+                @click="gotoProperty(p.id)"
+              >
+                <Building2 class="h-3.5 w-3.5 text-slate-400" />
+                <span class="flex-1 truncate font-medium text-slate-700">{{ p.name }}</span>
+                <span class="truncate text-xs text-slate-400">{{ p.city }}</span>
+              </button>
+            </div>
+            <div v-else-if="ui.search.trim()" class="absolute right-0 top-full z-30 mt-1.5 w-64 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-400 shadow-pop">
+              No properties match “{{ ui.search }}”.
+            </div>
+          </div>
+
           <!-- AI Assistant toggle -->
           <button
             class="pressable relative inline-flex items-center gap-1.5 rounded-xl border px-2.5 py-2 font-medium transition-colors duration-150 ease-out"

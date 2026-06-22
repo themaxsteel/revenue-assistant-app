@@ -21,3 +21,18 @@ export const channelLogos = {
   Pegipegi: pegipegiLogo,
   Tripadvisor: tripadvisorLogo,
 }
+
+// Primary brand colour per channel — used to tint data bars by OTA.
+// 'Direct' uses the RatePilot brand purple.
+export const channelBrandColors = {
+  Direct: '#8c52ff',
+  'Booking.com': '#003580',
+  Agoda: '#5392F9',
+  Airbnb: '#FF5A5F',
+  Traveloka: '#38BDF8',
+  Expedia: '#FDB933',
+  'Tiket.com': '#0064D2',
+  'Trip.com': '#287DFA',
+  Pegipegi: '#E5097F',
+  Tripadvisor: '#34E0A1',
+}
