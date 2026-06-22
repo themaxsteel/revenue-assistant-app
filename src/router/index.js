@@ -24,8 +24,7 @@ const routes = [
         props: true,
         children: [
           { path: '', redirect: (to) => `/property/${to.params.id}/overview` },
-          { path: 'overview', component: () => import('@/views/property/Overview.vue') },
-          { path: 'kpi', component: () => import('@/views/property/KpiTab.vue') },
+          { path: 'overview', component: () => import('@/views/property/KpiTab.vue') },
           { path: 'pricing', component: () => import('@/views/property/Pricing.vue') },
           { path: 'channels', component: () => import('@/views/property/Channels.vue') },
           { path: 'promotions', component: () => import('@/views/property/Promotions.vue') },

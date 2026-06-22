@@ -12,6 +12,7 @@ import { useChatStore } from '@/stores/chat'
 import { useUiStore } from '@/stores/ui'
 import OtaLogo from '@/components/OtaLogo.vue'
 import BookingsDonut from '@/components/BookingsDonut.vue'
+import RingProgress from '@/components/ui/RingProgress.vue'
 
 const props = defineProps({ card: Object, property: Object })
 const tasks = useTasksStore()
@@ -144,7 +145,7 @@ function askAI() {
           <div class="sticky left-0 z-10 flex items-center bg-white px-2 text-left text-[10px] text-slate-500" style="grid-column: 1; grid-row: 5">Price range</div>
           <div v-for="(d, i) in card.detail.days" :key="'pr' + i" class="bg-slate-50 py-1.5 leading-tight" :style="{ gridColumn: i + 2, gridRow: 5 }">
             <p class="text-[9px] tabular-nums text-slate-400">{{ d.currentText }}</p>
-            <p class="text-[10px] font-semibold tabular-nums text-slate-700">{{ d.suggestedText }}</p>
+            <p class="text-[10px] font-semibold tabular-nums" :class="d.uplift > 0 ? 'text-emerald-600' : 'text-slate-300'">{{ d.deltaText }}</p>
           </div>
         </div>
       </div>
@@ -212,26 +213,36 @@ function askAI() {
         </div>
         <button class="pressable inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600" @click="askAI"><Sparkles class="h-3 w-3" /> Ask</button>
       </div>
-      <div class="mt-2 flex items-center gap-2">
-        <p class="text-3xl font-bold tracking-tight text-slate-900">{{ card.detail.avg }}%</p>
-        <span
-          v-if="card.status !== 'good'"
-          class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          :class="card.status === 'attention' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'"
-        >{{ card.status === 'attention' ? 'Needs promo' : 'Watch' }}</span>
+      <div class="mt-3 flex items-center gap-3">
+        <RingProgress
+          :value="card.detail.avg"
+          :size="68"
+          :stroke="7"
+          :color="card.status === 'good' ? '#10b981' : card.status === 'watch' ? '#f59e0b' : '#f43f5e'"
+          track="#e2e8f0"
+        >
+          <span class="text-sm font-bold tracking-tight tabular-nums text-slate-900">{{ card.detail.avg }}%</span>
+        </RingProgress>
+        <div class="min-w-0">
+          <span
+            v-if="card.status !== 'good'"
+            class="inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold"
+            :class="card.status === 'attention' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-700'"
+          >{{ card.status === 'attention' ? 'Needs promo' : 'Watch' }}</span>
+          <p
+            class="flex items-center gap-1.5 text-xs font-medium"
+            :class="[card.status === 'good' ? 'text-emerald-600' : card.status === 'watch' ? 'text-amber-600' : 'text-rose-600', card.status !== 'good' ? 'mt-1' : '']"
+          >
+            <component :is="card.status === 'good' ? Check : AlertTriangle" class="h-3.5 w-3.5 shrink-0" />
+            {{ card.status === 'good'
+              ? 'Above target · no soft dates'
+              : card.status === 'watch'
+                ? `Just below target · ${card.detail.softCount} date${card.detail.softCount > 1 ? 's' : ''} softening`
+                : `${card.detail.softCount} date${card.detail.softCount > 1 ? 's' : ''} need a promo` }}
+          </p>
+          <p class="mt-1 text-[11px] text-slate-400">{{ property.units }} rooms total</p>
+        </div>
       </div>
-      <p
-        class="mt-0.5 flex items-center gap-1.5 text-xs font-medium"
-        :class="card.status === 'good' ? 'text-emerald-600' : card.status === 'watch' ? 'text-amber-600' : 'text-rose-600'"
-      >
-        <component :is="card.status === 'good' ? Check : AlertTriangle" class="h-3.5 w-3.5" />
-        {{ card.status === 'good'
-          ? 'Above target · no soft dates'
-          : card.status === 'watch'
-            ? `Just below target · ${card.detail.softCount} date${card.detail.softCount > 1 ? 's' : ''} softening`
-            : `${card.detail.softCount} date${card.detail.softCount > 1 ? 's' : ''} need a promo` }}
-      </p>
-      <p class="mt-1 text-[11px] text-slate-400">{{ property.units }} rooms total</p>
 
       <!-- Occupancy calendar · next 7 days -->
       <div class="mt-4 grid gap-px overflow-hidden rounded-lg border border-slate-200 bg-slate-200 text-center" style="grid-template-columns: repeat(7, minmax(0, 1fr))">
@@ -244,17 +255,6 @@ function askAI() {
         </div>
         <!-- occupancy cell -->
         <div v-for="(d, idx) in card.detail.days" :key="'o' + idx" class="flex items-center justify-center py-2 text-[10px] font-bold text-white" :class="occHeat(d.occ)" :style="{ gridColumn: idx + 1, gridRow: 3 }">{{ d.occ }}%</div>
-      </div>
-
-      <div class="mt-4">
-        <div class="relative">
-          <span class="absolute -top-3.5 -translate-x-1/2 whitespace-nowrap text-[10px] text-slate-400" :style="{ left: card.detail.target + '%' }">target {{ card.detail.target }}%</span>
-          <div class="h-2.5 overflow-hidden rounded-full bg-slate-200">
-            <div class="h-full rounded-full bg-slate-700" :style="{ width: Math.min(100, card.detail.avg) + '%' }" />
-          </div>
-          <span class="absolute top-0 h-2.5 border-l border-dashed border-slate-500" :style="{ left: card.detail.target + '%' }" />
-        </div>
-        <div class="mt-1 flex justify-between text-[10px] text-slate-400"><span>0%</span><span>100%</span></div>
       </div>
     </template>
 

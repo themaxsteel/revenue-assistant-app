@@ -37,6 +37,12 @@ function hash(str) {
 function sign(n) {
   return `${n > 0 ? '+' : ''}${n}`
 }
+// Short IDR for price deltas: 300000 → "300rb", 1500000 → "1.5jt".
+function idrShort(v) {
+  if (v >= 1_000_000) return `${+(v / 1_000_000).toFixed(1)}jt`
+  if (v >= 1_000) return `${Math.round(v / 1_000)}rb`
+  return `${Math.round(v)}`
+}
 function sentimentTone(s) {
   return s === 'negative' ? 'red' : s === 'neutral' ? 'amber' : 'green'
 }
@@ -120,6 +126,7 @@ function dailyCards(property, ctx) {
       uplift,
       currentText: idr(current, { compact: true }),
       suggestedText: idr(suggested, { compact: true }),
+      deltaText: uplift > 0 ? `+${idrShort(suggested - current)}` : '—',
     }
   })
   const hiCount = next7.filter((d) => d.occForecast >= 85).length
